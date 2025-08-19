@@ -1,7 +1,7 @@
 'use server';
 import { db } from '@/lib/firebase';
 import { Member, Payment, Expense } from '@/types';
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where, writeBatch } from 'firebase/firestore';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where, writeBatch, getDoc } from 'firebase/firestore';
 
 export async function getMembers(): Promise<Member[]> {
     const membersCol = collection(db, 'members');
@@ -15,6 +15,24 @@ export async function getPayments(): Promise<Payment[]> {
     const paymentSnapshot = await getDocs(paymentsCol);
     const paymentList = paymentSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Payment));
     return paymentList;
+}
+
+export async function getPaymentById(id: string): Promise<Payment | null> {
+    const paymentDoc = doc(db, 'payments', id);
+    const paymentSnapshot = await getDoc(paymentDoc);
+    if (paymentSnapshot.exists()) {
+        return { id: paymentSnapshot.id, ...paymentSnapshot.data() } as Payment;
+    }
+    return null;
+}
+
+export async function getMemberById(id: string): Promise<Member | null> {
+    const memberDoc = doc(db, 'members', id);
+    const memberSnapshot = await getDoc(memberDoc);
+    if (memberSnapshot.exists()) {
+        return { id: memberSnapshot.id, ...memberSnapshot.data() } as Member;
+    }
+    return null;
 }
 
 export async function addMember(member: Omit<Member, 'id'>): Promise<Member> {

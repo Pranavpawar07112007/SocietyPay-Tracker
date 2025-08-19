@@ -3,7 +3,8 @@
 import * as React from 'react';
 import { useState, useEffect, useMemo, useTransition } from 'react';
 import { getMonth, getYear, format } from 'date-fns';
-import { ArrowUpDown, Trash2, Search, MoreHorizontal } from 'lucide-react';
+import { ArrowUpDown, Trash2, Search, MoreHorizontal, ReceiptText } from 'lucide-react';
+import Link from 'next/link';
 
 import type { Member, Payment } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -20,6 +21,7 @@ import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
+    DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
@@ -270,6 +272,13 @@ export default function PaymentHistory() {
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
+                                <DropdownMenuItem asChild>
+                                  <Link href={`/receipt/${payment.id}`}>
+                                    <ReceiptText className="mr-2 h-4 w-4" />
+                                    <span>Generate Receipt</span>
+                                  </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
                                 <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setPaymentToDelete(payment); }} className="text-red-600" disabled={isPending}>
                                     <Trash2 className="mr-2 h-4 w-4" />
                                     <span>Delete</span>
@@ -282,7 +291,7 @@ export default function PaymentHistory() {
                             <AlertDialogDescription>
                                 This action cannot be undone. This will permanently delete the payment
                                 record for {payment.member?.name} on {format(new Date(payment.date), 'PPP')}.
-                            </AlertDialogDescription>
+                            </Alexandresez>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                             <AlertDialogCancel onClick={() => setPaymentToDelete(null)}>Cancel</AlertDialogCancel>
