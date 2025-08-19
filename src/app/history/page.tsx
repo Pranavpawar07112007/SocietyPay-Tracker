@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Home, LayoutDashboard } from 'lucide-react';
+import { Home } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -26,12 +26,6 @@ export default function HistoryPage() {
               </CardDescription>
             </div>
             <div className="flex gap-2">
-                <Button asChild variant="outline">
-                    <Link href="/dashboard">
-                        <LayoutDashboard className="mr-2 h-4 w-4" />
-                        Dashboard
-                    </Link>
-                </Button>
                 <Button asChild variant="outline">
                 <Link href="/">
                     <Home className="mr-2 h-4 w-4" />
