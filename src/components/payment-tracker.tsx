@@ -1,11 +1,12 @@
+
 "use client";
 
 import * as React from "react";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { format, getMonth, getYear, isSameMonth } from "date-fns";
+import { format, getYear, isSameMonth } from "date-fns";
 import { CalendarIcon, CheckCircle2, XCircle, ReceiptText, MoreHorizontal, Pencil, UserPlus, Trash2, MessageSquare } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -70,6 +71,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import type { Member, Payment } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
+import { addMember, addPayment, deleteMember, getMembers, getPayments, updateMember, updatePayment } from "@/services/firestore";
 
 const paymentSchema = z.object({
   amount: z.coerce
@@ -93,6 +95,7 @@ export default function PaymentTracker() {
   const [members, setMembers] = useState<Member[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isPending, startTransition] = useTransition();
   const [filter, setFilter] = useState("all");
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [isMemberDialogOpen, setIsMemberDialogOpen] = useState(false);
@@ -115,42 +118,25 @@ export default function PaymentTracker() {
   });
 
   useEffect(() => {
-    setIsLoading(true);
-    try {
-        const storedMembers = localStorage.getItem('members');
-        const storedPayments = localStorage.getItem('payments');
-        if (storedMembers) {
-            setMembers(JSON.parse(storedMembers));
+    const fetchData = async () => {
+        setIsLoading(true);
+        try {
+            const [membersData, paymentsData] = await Promise.all([getMembers(), getPayments()]);
+            setMembers(membersData);
+            setPayments(paymentsData);
+        } catch (error) {
+            console.error("Failed to load data from Firestore", error);
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Could not load data from the server."
+            });
+        } finally {
+            setIsLoading(false);
         }
-        if (storedPayments) {
-            setPayments(JSON.parse(storedPayments));
-        }
-    } catch (error) {
-        console.error("Failed to load data from localStorage", error);
-        toast({
-            variant: "destructive",
-            title: "Error",
-            description: "Could not load data from your browser's storage."
-        });
-    } finally {
-        setIsLoading(false);
-    }
+    };
+    fetchData();
   }, [toast]);
-
-  useEffect(() => {
-    try {
-        localStorage.setItem('members', JSON.stringify(members));
-        localStorage.setItem('payments', JSON.stringify(payments));
-    } catch (error) {
-        console.error("Failed to save data to localStorage", error);
-        toast({
-            variant: "destructive",
-            title: "Error",
-            description: "Could not save data to your browser's storage."
-        });
-    }
-  }, [members, payments, toast]);
-
   
   const membersWithPayments = useMemo(() => {
     const today = new Date();
@@ -210,13 +196,27 @@ export default function PaymentTracker() {
 
   const handleDeleteMember = () => {
     if (!memberToDelete) return;
-    setMembers(prev => prev.filter(m => m.id !== memberToDelete.id));
-    setPayments(prev => prev.filter(p => p.memberId !== memberToDelete.id));
-    toast({
-        title: "Member Deleted",
-        description: `Member ${memberToDelete.name} and all their payment records have been deleted.`
+
+    startTransition(async () => {
+        try {
+            await deleteMember(memberToDelete.id);
+            setMembers(prev => prev.filter(m => m.id !== memberToDelete.id));
+            setPayments(prev => prev.filter(p => p.memberId !== memberToDelete.id));
+            toast({
+                title: "Member Deleted",
+                description: `Member ${memberToDelete.name} and all their payment records have been deleted.`
+            });
+        } catch (error) {
+            console.error("Failed to delete member", error);
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Could not delete member. Please try again."
+            });
+        } finally {
+            setMemberToDelete(null);
+        }
     });
-    setMemberToDelete(null);
   };
 
   const handleSendReminder = (member: Member) => {
@@ -229,48 +229,77 @@ export default function PaymentTracker() {
   const onPaymentSubmit = (values: z.infer<typeof paymentSchema>) => {
     if (!selectedMember) return;
 
-    const paymentData = {
-        memberId: selectedMember.id,
-        amount: values.amount,
-        date: values.date.toISOString(),
-    };
-
-    if (editingPayment) {
-        setPayments(prev => prev.map(p => p.id === editingPayment.id ? { ...paymentData, id: p.id } : p));
-        toast({
-            title: "Payment Updated",
-            description: `Payment for ${selectedMember.name} has been updated.`,
-        });
-    } else {
-        setPayments(prev => [...prev, { ...paymentData, id: Date.now().toString() }]);
-        toast({
-            title: "Payment Recorded",
-            description: `Payment for ${selectedMember.name} has been recorded.`,
-        });
-    }
-    
-    setIsPaymentDialogOpen(false);
-    setSelectedMember(null);
-    setEditingPayment(null);
+    startTransition(async () => {
+        try {
+            if (editingPayment) {
+                const paymentData = {
+                    amount: values.amount,
+                    date: values.date.toISOString(),
+                };
+                await updatePayment(editingPayment.id, paymentData);
+                setPayments(prev => prev.map(p => p.id === editingPayment.id ? { ...p, ...paymentData } : p));
+                toast({
+                    title: "Payment Updated",
+                    description: `Payment for ${selectedMember.name} has been updated.`,
+                });
+            } else {
+                 const paymentData = {
+                    memberId: selectedMember.id,
+                    amount: values.amount,
+                    date: values.date.toISOString(),
+                };
+                const newPayment = await addPayment(paymentData);
+                setPayments(prev => [...prev, newPayment]);
+                toast({
+                    title: "Payment Recorded",
+                    description: `Payment for ${selectedMember.name} has been recorded.`,
+                });
+            }
+        } catch (error) {
+             console.error("Failed to save payment", error);
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Could not save payment. Please try again."
+            });
+        } finally {
+            setIsPaymentDialogOpen(false);
+            setSelectedMember(null);
+            setEditingPayment(null);
+        }
+    });
   };
 
   const onMemberSubmit = (values: z.infer<typeof memberSchema>) => {
-    if (selectedMember) {
-        setMembers(prev => prev.map(m => m.id === selectedMember.id ? { ...values, id: m.id } : m));
-        toast({
-            title: "Member Updated",
-            description: `Details for ${values.name} have been updated.`,
-        });
-    } else {
-        const newMember = { ...values, id: Date.now().toString() };
-        setMembers(prev => [...prev, newMember]);
-        toast({
-            title: "Member Added",
-            description: `${values.name} has been added to the society.`
-        });
-    }
-    setIsMemberDialogOpen(false);
-    setSelectedMember(null);
+    startTransition(async () => {
+        try {
+            if (selectedMember) {
+                await updateMember(selectedMember.id, values);
+                setMembers(prev => prev.map(m => m.id === selectedMember.id ? { ...m, ...values } : m));
+                toast({
+                    title: "Member Updated",
+                    description: `Details for ${values.name} have been updated.`,
+                });
+            } else {
+                const newMember = await addMember(values);
+                setMembers(prev => [...prev, newMember]);
+                toast({
+                    title: "Member Added",
+                    description: `${values.name} has been added to the society.`
+                });
+            }
+        } catch(error) {
+            console.error("Failed to save member", error);
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Could not save member details. Please try again."
+            });
+        } finally {
+            setIsMemberDialogOpen(false);
+            setSelectedMember(null);
+        }
+    });
   };
 
   const filteredMembers = useMemo(() => {
@@ -341,28 +370,28 @@ export default function PaymentTracker() {
                     <AlertDialog open={memberToDelete?.id === member.id} onOpenChange={(open) => !open && setMemberToDelete(null)}>
                         <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
+                            <Button variant="ghost" className="h-8 w-8 p-0" disabled={isPending}>
                             <span className="sr-only">Open menu</span>
                             <MoreHorizontal className="h-4 w-4" />
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleRecordPaymentClick(member)}>
+                            <DropdownMenuItem onClick={() => handleRecordPaymentClick(member)} disabled={isPending}>
                             <ReceiptText className="mr-2 h-4 w-4" />
                             <span>{member.currentMonthPayment ? "Edit Payment" : "Record Payment"}</span>
                             </DropdownMenuItem>
                              {!member.currentMonthPayment && (
-                                <DropdownMenuItem onClick={() => handleSendReminder(member)}>
+                                <DropdownMenuItem onClick={() => handleSendReminder(member)} disabled={isPending}>
                                     <MessageSquare className="mr-2 h-4 w-4" />
                                     <span>Send Reminder</span>
                                 </DropdownMenuItem>
                             )}
-                            <DropdownMenuItem onClick={() => handleEditMemberClick(member)}>
+                            <DropdownMenuItem onClick={() => handleEditMemberClick(member)} disabled={isPending}>
                             <Pencil className="mr-2 h-4 w-4" />
                             <span>Edit Member</span>
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-red-600" onSelect={(e) => { e.preventDefault(); setMemberToDelete(member); }}>
+                            <DropdownMenuItem className="text-red-600" onSelect={(e) => { e.preventDefault(); setMemberToDelete(member); }} disabled={isPending}>
                                 <Trash2 className="mr-2 h-4 w-4" />
                                 Delete Member
                             </DropdownMenuItem>
@@ -431,7 +460,7 @@ export default function PaymentTracker() {
                     <TabsTrigger value="paid">Paid</TabsTrigger>
                     <TabsTrigger value="unpaid">Unpaid</TabsTrigger>
                     </TabsList>
-                    <Button onClick={handleAddMemberClick}>
+                    <Button onClick={handleAddMemberClick} disabled={isPending}>
                         <UserPlus className="mr-2 h-4 w-4" />
                         Add Member
                     </Button>
@@ -527,8 +556,8 @@ export default function PaymentTracker() {
               </div>
 
               <DialogFooter>
-                <Button type="button" variant="ghost" onClick={() => setIsPaymentDialogOpen(false)}>Cancel</Button>
-                <Button type="submit">Save Payment</Button>
+                <Button type="button" variant="ghost" onClick={() => setIsPaymentDialogOpen(false)} disabled={isPending}>Cancel</Button>
+                <Button type="submit" disabled={isPending}>Save Payment</Button>
               </DialogFooter>
             </form>
           </Form>
@@ -594,8 +623,8 @@ export default function PaymentTracker() {
               </div>
 
               <DialogFooter>
-                <Button type="button" variant="ghost" onClick={() => setIsMemberDialogOpen(false)}>Cancel</Button>
-                <Button type="submit">{selectedMember ? 'Save Changes' : 'Add Member'}</Button>
+                <Button type="button" variant="ghost" onClick={() => setIsMemberDialogOpen(false)} disabled={isPending}>Cancel</Button>
+                <Button type="submit" disabled={isPending}>{selectedMember ? 'Save Changes' : 'Add Member'}</Button>
               </DialogFooter>
             </form>
           </Form>
@@ -604,5 +633,3 @@ export default function PaymentTracker() {
     </>
   );
 }
-
-    

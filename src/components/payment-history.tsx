@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from 'react';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useTransition } from 'react';
 import { getMonth, getYear, format } from 'date-fns';
 import { ArrowUpDown, Trash2, Search, MoreHorizontal } from 'lucide-react';
 
@@ -41,6 +41,7 @@ import {
 } from "@/components/ui/select"
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
+import { deletePayment, getMembers, getPayments } from '@/services/firestore';
 
 type PaymentWithMember = Payment & { member: Member | undefined };
 type SortKey = keyof PaymentWithMember | 'member.name' | 'member.flatNumber';
@@ -53,6 +54,7 @@ export default function PaymentHistory() {
   const [members, setMembers] = useState<Member[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isPending, startTransition] = useTransition();
   const [searchTerm, setSearchTerm] = useState('');
   const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: 'ascending' | 'descending' } | null>(null);
   const [paymentToDelete, setPaymentToDelete] = useState<Payment | null>(null);
@@ -60,53 +62,48 @@ export default function PaymentHistory() {
   const [selectedYear, setSelectedYear] = useState<string>(ALL_YEARS);
 
     useEffect(() => {
-        setIsLoading(true);
-        try {
-            const storedMembers = localStorage.getItem('members');
-            const storedPayments = localStorage.getItem('payments');
-            if (storedMembers) {
-                setMembers(JSON.parse(storedMembers));
+        const fetchData = async () => {
+            setIsLoading(true);
+            try {
+                const [membersData, paymentsData] = await Promise.all([getMembers(), getPayments()]);
+                setMembers(membersData);
+                setPayments(paymentsData);
+            } catch (error) {
+                console.error("Failed to load data from Firestore", error);
+                toast({
+                    variant: "destructive",
+                    title: "Error",
+                    description: "Could not load data from the server."
+                });
+            } finally {
+                setIsLoading(false);
             }
-            if (storedPayments) {
-                setPayments(JSON.parse(storedPayments));
-            }
-        } catch (error) {
-            console.error("Failed to load data from localStorage", error);
-            toast({
-                variant: "destructive",
-                title: "Error",
-                description: "Could not load data from your browser's storage."
-            });
-        } finally {
-            setIsLoading(false);
-        }
+        };
+        fetchData();
     }, [toast]);
-
-    useEffect(() => {
-        try {
-            // We only save payments from the main tracker page, no need to save here.
-            // This component is for viewing and deleting history.
-        } catch (error) {
-            console.error("Failed to save payments to localStorage", error);
-            toast({
-                variant: "destructive",
-                title: "Error",
-                description: "Could not save payment data to your browser's storage."
-            });
-        }
-    }, [payments, toast]);
 
 
   const handleDeletePayment = () => {
     if (!paymentToDelete) return;
-    const updatedPayments = payments.filter(p => p.id !== paymentToDelete.id);
-    setPayments(updatedPayments);
-    localStorage.setItem('payments', JSON.stringify(updatedPayments));
-    toast({
-      title: 'Payment Deleted',
-      description: 'The payment record has been successfully deleted.',
+    startTransition(async () => {
+        try {
+            await deletePayment(paymentToDelete.id);
+            setPayments(updatedPayments => updatedPayments.filter(p => p.id !== paymentToDelete.id));
+            toast({
+              title: 'Payment Deleted',
+              description: 'The payment record has been successfully deleted.',
+            });
+        } catch (error) {
+            console.error("Failed to delete payment", error);
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Could not delete payment. Please try again."
+            });
+        } finally {
+            setPaymentToDelete(null);
+        }
     });
-    setPaymentToDelete(null);
   };
 
   const paymentsWithMemberData: PaymentWithMember[] = useMemo(() => {
@@ -267,13 +264,13 @@ export default function PaymentHistory() {
                     <AlertDialog open={paymentToDelete?.id === payment.id} onOpenChange={(open) => !open && setPaymentToDelete(null)}>
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                <Button variant="ghost" className="h-8 w-8 p-0" disabled={isPending}>
                                 <span className="sr-only">Open menu</span>
                                 <MoreHorizontal className="h-4 w-4" />
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                                <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setPaymentToDelete(payment); }} className="text-red-600">
+                                <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setPaymentToDelete(payment); }} className="text-red-600" disabled={isPending}>
                                     <Trash2 className="mr-2 h-4 w-4" />
                                     <span>Delete</span>
                                 </DropdownMenuItem>
