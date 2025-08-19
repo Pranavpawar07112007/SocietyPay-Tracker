@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { format } from "date-fns";
-import { CalendarIcon, CheckCircle2, XCircle, ReceiptText } from "lucide-react";
+import { CalendarIcon, CheckCircle2, XCircle, ReceiptText, MoreHorizontal, Edit, Pencil } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Form,
   FormControl,
@@ -65,22 +71,38 @@ const paymentSchema = z.object({
   }),
 });
 
+const memberSchema = z.object({
+  name: z.string().min(1, "Name is required."),
+  mobileNumber: z.string().min(10, "Enter a valid mobile number.").max(10, "Enter a valid mobile number."),
+});
+
 export default function PaymentTracker() {
   const { toast } = useToast();
   const [members, setMembers] = useState<Member[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState("all");
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+  const [isMemberDialogOpen, setIsMemberDialogOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
 
-  const form = useForm<z.infer<typeof paymentSchema>>({
+  const paymentForm = useForm<z.infer<typeof paymentSchema>>({
     resolver: zodResolver(paymentSchema),
+  });
+
+  const memberForm = useForm<z.infer<typeof memberSchema>>({
+    resolver: zodResolver(memberSchema),
   });
 
   useEffect(() => {
     try {
       const savedMembers = localStorage.getItem("societyMembers");
-      setMembers(savedMembers ? JSON.parse(savedMembers) : initialMembers);
+      const parsedMembers = savedMembers ? JSON.parse(savedMembers) : initialMembers;
+      // Simple migration for users who have old data without mobileNumber
+      const migratedMembers = parsedMembers.map((m: Member) => ({
+        ...m,
+        mobileNumber: m.mobileNumber || '9876543210'
+      }));
+      setMembers(migratedMembers);
     } catch (error) {
       console.error("Failed to load members from localStorage", error);
       setMembers(initialMembers);
@@ -96,21 +118,30 @@ export default function PaymentTracker() {
 
   useEffect(() => {
     if (selectedMember) {
-      form.reset({
+      paymentForm.reset({
         amount: selectedMember.amountPaid ?? undefined,
         date: selectedMember.paymentDate
           ? new Date(selectedMember.paymentDate)
           : undefined,
       });
+      memberForm.reset({
+        name: selectedMember.name,
+        mobileNumber: selectedMember.mobileNumber,
+      })
     }
-  }, [selectedMember, form]);
+  }, [selectedMember, paymentForm, memberForm]);
 
   const handleRecordPaymentClick = (member: Member) => {
     setSelectedMember(member);
-    setIsDialogOpen(true);
+    setIsPaymentDialogOpen(true);
+  };
+  
+  const handleEditMemberClick = (member: Member) => {
+    setSelectedMember(member);
+    setIsMemberDialogOpen(true);
   };
 
-  const onSubmit = (values: z.infer<typeof paymentSchema>) => {
+  const onPaymentSubmit = (values: z.infer<typeof paymentSchema>) => {
     if (!selectedMember) return;
 
     setMembers(
@@ -130,9 +161,26 @@ export default function PaymentTracker() {
       variant: "default",
       className: "bg-accent text-accent-foreground",
     });
-    setIsDialogOpen(false);
+    setIsPaymentDialogOpen(false);
     setSelectedMember(null);
   };
+
+  const onMemberSubmit = (values: z.infer<typeof memberSchema>) => {
+    if (!selectedMember) return;
+
+    setMembers(
+      members.map((m) =>
+        m.id === selectedMember.id ? { ...m, ...values } : m
+      )
+    );
+    toast({
+      title: "Member Updated",
+      description: `Details for ${values.name} have been updated.`,
+    });
+    setIsMemberDialogOpen(false);
+    setSelectedMember(null);
+  };
+
 
   const filteredMembers = useMemo(() => {
     if (filter === "paid") {
@@ -174,10 +222,11 @@ export default function PaymentTracker() {
                     <TableRow>
                       <TableHead className="w-[200px]">Member Name</TableHead>
                       <TableHead>Flat No.</TableHead>
+                      <TableHead>Mobile No.</TableHead>
                       <TableHead>Amount Paid</TableHead>
                       <TableHead>Payment Date</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Action</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -186,10 +235,11 @@ export default function PaymentTracker() {
                         <TableRow key={i}>
                           <TableCell><Skeleton className="h-5 w-32" /></TableCell>
                           <TableCell><Skeleton className="h-5 w-16" /></TableCell>
+                          <TableCell><Skeleton className="h-5 w-24" /></TableCell>
                           <TableCell><Skeleton className="h-5 w-20" /></TableCell>
                           <TableCell><Skeleton className="h-5 w-24" /></TableCell>
                           <TableCell><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
-                          <TableCell className="text-right"><Skeleton className="h-8 w-32 ml-auto" /></TableCell>
+                          <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
                         </TableRow>
                       ))
                     ) : filteredMembers.length > 0 ? (
@@ -197,6 +247,7 @@ export default function PaymentTracker() {
                         <TableRow key={member.id}>
                           <TableCell className="font-medium">{member.name}</TableCell>
                           <TableCell>{member.flatNumber}</TableCell>
+                          <TableCell>{member.mobileNumber}</TableCell>
                           <TableCell>
                             {member.amountPaid ? `₹${member.amountPaid.toFixed(2)}` : "N/A"}
                           </TableCell>
@@ -219,15 +270,30 @@ export default function PaymentTracker() {
                             )}
                           </TableCell>
                           <TableCell className="text-right">
-                            <Button onClick={() => handleRecordPaymentClick(member)}>
-                              {member.amountPaid ? "Edit Payment" : "Record Payment"}
-                            </Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                  <span className="sr-only">Open menu</span>
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleEditMemberClick(member)}>
+                                  <Pencil className="mr-2 h-4 w-4" />
+                                  <span>Edit Member</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleRecordPaymentClick(member)}>
+                                  <ReceiptText className="mr-2 h-4 w-4" />
+                                  <span>{member.amountPaid ? "Edit Payment" : "Record Payment"}</span>
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </TableCell>
                         </TableRow>
                       ))
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={6} className="h-24 text-center">
+                        <TableCell colSpan={7} className="h-24 text-center">
                           No members found for this filter.
                         </TableCell>
                       </TableRow>
@@ -240,10 +306,10 @@ export default function PaymentTracker() {
         </CardContent>
       </Card>
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+          <Form {...paymentForm}>
+            <form onSubmit={paymentForm.handleSubmit(onPaymentSubmit)} className="space-y-8">
               <DialogHeader>
                 <DialogTitle>Record Payment for {selectedMember?.name}</DialogTitle>
                 <DialogDescription>
@@ -253,7 +319,7 @@ export default function PaymentTracker() {
               
               <div className="grid gap-4 py-4">
                 <FormField
-                  control={form.control}
+                  control={paymentForm.control}
                   name="amount"
                   render={({ field }) => (
                     <FormItem>
@@ -266,7 +332,7 @@ export default function PaymentTracker() {
                   )}
                 />
                 <FormField
-                  control={form.control}
+                  control={paymentForm.control}
                   name="date"
                   render={({ field }) => (
                     <FormItem className="flex flex-col">
@@ -309,8 +375,57 @@ export default function PaymentTracker() {
               </div>
 
               <DialogFooter>
-                <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
+                <Button type="button" variant="ghost" onClick={() => setIsPaymentDialogOpen(false)}>Cancel</Button>
                 <Button type="submit">Save Payment</Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+      
+      <Dialog open={isMemberDialogOpen} onOpenChange={setIsMemberDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <Form {...memberForm}>
+            <form onSubmit={memberForm.handleSubmit(onMemberSubmit)} className="space-y-8">
+              <DialogHeader>
+                <DialogTitle>Edit Member Details</DialogTitle>
+                <DialogDescription>
+                  Update the member's name and mobile number.
+                </DialogDescription>
+              </DialogHeader>
+              
+              <div className="grid gap-4 py-4">
+                <FormField
+                  control={memberForm.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g. Ramesh Kumar" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={memberForm.control}
+                  name="mobileNumber"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Mobile Number</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g. 9876543210" type="tel" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <DialogFooter>
+                <Button type="button" variant="ghost" onClick={() => setIsMemberDialogOpen(false)}>Cancel</Button>
+                <Button type="submit">Save Changes</Button>
               </DialogFooter>
             </form>
           </Form>
