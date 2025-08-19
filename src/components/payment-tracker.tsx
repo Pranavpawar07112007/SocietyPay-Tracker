@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { format, getMonth, getYear, isSameMonth } from "date-fns";
-import { CalendarIcon, CheckCircle2, XCircle, ReceiptText, MoreHorizontal, Pencil, UserPlus, Trash2 } from "lucide-react";
+import { CalendarIcon, CheckCircle2, XCircle, ReceiptText, MoreHorizontal, Pencil, UserPlus, Trash2, MessageSquare } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -216,6 +216,13 @@ export default function PaymentTracker() {
     setMemberToDelete(null);
   };
 
+  const handleSendReminder = (member: Member) => {
+    const currentMonth = format(new Date(), 'MMMM');
+    const message = `Dear ${member.name}, this is a friendly reminder that your society maintenance payment for ${currentMonth} is due. Thank you, Aroma Residency.`;
+    const whatsappUrl = `https://wa.me/${member.mobileNumber}?text=${encodeURIComponent(message)}`;
+    window.open(whatsappUrl, '_blank');
+  }
+
   const onPaymentSubmit = (values: z.infer<typeof paymentSchema>) => {
     if (!selectedMember) return;
 
@@ -351,6 +358,12 @@ export default function PaymentTracker() {
                             <ReceiptText className="mr-2 h-4 w-4" />
                             <span>{member.currentMonthPayment ? "Edit Payment" : "Record Payment"}</span>
                             </DropdownMenuItem>
+                             {!member.currentMonthPayment && (
+                                <DropdownMenuItem onClick={() => handleSendReminder(member)}>
+                                    <MessageSquare className="mr-2 h-4 w-4" />
+                                    <span>Send Reminder</span>
+                                </DropdownMenuItem>
+                            )}
                             <DropdownMenuItem onClick={() => handleEditMemberClick(member)}>
                             <Pencil className="mr-2 h-4 w-4" />
                             <span>Edit Member</span>
