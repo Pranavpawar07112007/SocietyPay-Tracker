@@ -17,7 +17,7 @@ import { useAuth } from '@/hooks/use-auth';
 export default function ReceiptPage() {
   const { toast } = useToast();
   const params = useParams();
-  const paymentId = params ? (params.paymentId as string) : '';
+  const paymentId = params.paymentId as string;
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
 
@@ -125,7 +125,7 @@ export default function ReceiptPage() {
                             Maintenance Receipt
                         </CardTitle>
                     </div>
-                     <p className="text-sm text-muted-foreground pt-2">Aroma Residency</p>
+                     <p className="text-lg font-semibold text-muted-foreground pt-2">Aroma Residency Co-operative Housing Society Limited</p>
                 </CardHeader>
                 <CardContent className="p-6 space-y-6">
                     {isLoading ? (
@@ -199,3 +199,5 @@ export default function ReceiptPage() {
     </main>
   );
 }
+
+    
