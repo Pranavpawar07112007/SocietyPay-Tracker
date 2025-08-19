@@ -1,11 +1,9 @@
-
 "use client";
 
 import * as React from 'react';
 import { useState, useEffect, useMemo } from 'react';
 import { getMonth, getYear, format } from 'date-fns';
 import { ArrowUpDown, Trash2, Search, MoreHorizontal } from 'lucide-react';
-import { collection, onSnapshot, doc, deleteDoc } from "firebase/firestore";
 
 import type { Member, Payment } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -43,15 +41,12 @@ import {
 } from "@/components/ui/select"
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
-import { db } from '@/lib/firebase';
 
 type PaymentWithMember = Payment & { member: Member | undefined };
 type SortKey = keyof PaymentWithMember | 'member.name' | 'member.flatNumber';
 
 const ALL_MONTHS = "all-months";
 const ALL_YEARS = "all-years";
-const USER_ID = "defaultUser"; // Static user ID
-
 
 export default function PaymentHistory() {
   const { toast } = useToast();
@@ -64,47 +59,53 @@ export default function PaymentHistory() {
   const [selectedMonth, setSelectedMonth] = useState<string>(ALL_MONTHS);
   const [selectedYear, setSelectedYear] = useState<string>(ALL_YEARS);
 
-  useEffect(() => {
-    setIsLoading(true);
+    useEffect(() => {
+        setIsLoading(true);
+        try {
+            const storedMembers = localStorage.getItem('members');
+            const storedPayments = localStorage.getItem('payments');
+            if (storedMembers) {
+                setMembers(JSON.parse(storedMembers));
+            }
+            if (storedPayments) {
+                setPayments(JSON.parse(storedPayments));
+            }
+        } catch (error) {
+            console.error("Failed to load data from localStorage", error);
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Could not load data from your browser's storage."
+            });
+        } finally {
+            setIsLoading(false);
+        }
+    }, [toast]);
 
-    const membersCollection = collection(db, "users", USER_ID, "members");
-    const paymentsCollection = collection(db, "users", USER_ID, "payments");
-    
-    const unsubMembers = onSnapshot(membersCollection, (snapshot) => {
-        const membersList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Member));
-        setMembers(membersList);
-    });
+    useEffect(() => {
+        try {
+            // We only save payments from the main tracker page, no need to save here.
+            // This component is for viewing and deleting history.
+        } catch (error) {
+            console.error("Failed to save payments to localStorage", error);
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Could not save payment data to your browser's storage."
+            });
+        }
+    }, [payments, toast]);
 
-    const unsubPayments = onSnapshot(paymentsCollection, (snapshot) => {
-        const paymentsList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Payment));
-        setPayments(paymentsList);
-    });
 
-    setIsLoading(false);
-
-    return () => {
-        unsubMembers();
-        unsubPayments();
-    };
-}, []);
-
-  const handleDeletePayment = async () => {
+  const handleDeletePayment = () => {
     if (!paymentToDelete) return;
-
-    try {
-        await deleteDoc(doc(db, "users", USER_ID, "payments", paymentToDelete.id));
-        toast({
-          title: 'Payment Deleted',
-          description: 'The payment record has been successfully deleted.',
-        });
-    } catch(e) {
-        console.error("Error deleting payment: ", e);
-        toast({
-            variant: "destructive",
-            title: "Error",
-            description: "Could not delete payment. Please try again."
-        });
-    }
+    const updatedPayments = payments.filter(p => p.id !== paymentToDelete.id);
+    setPayments(updatedPayments);
+    localStorage.setItem('payments', JSON.stringify(updatedPayments));
+    toast({
+      title: 'Payment Deleted',
+      description: 'The payment record has been successfully deleted.',
+    });
     setPaymentToDelete(null);
   };
 

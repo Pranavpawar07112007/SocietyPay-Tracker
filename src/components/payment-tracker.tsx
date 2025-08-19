@@ -7,8 +7,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { format, getMonth, getYear, isSameMonth } from "date-fns";
 import { CalendarIcon, CheckCircle2, XCircle, ReceiptText, MoreHorizontal, Pencil, UserPlus, Trash2, MessageSquare } from "lucide-react";
-import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, query, where, getDocs, writeBatch } from "firebase/firestore";
-
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -72,7 +70,6 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import type { Member, Payment } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
-import { db } from "@/lib/firebase";
 
 const paymentSchema = z.object({
   amount: z.coerce
@@ -90,8 +87,6 @@ const memberSchema = z.object({
 });
 
 type MemberWithPayment = Member & { currentMonthPayment: Payment | null };
-
-const USER_ID = "defaultUser"; // Static user ID
 
 export default function PaymentTracker() {
   const { toast } = useToast();
@@ -121,26 +116,40 @@ export default function PaymentTracker() {
 
   useEffect(() => {
     setIsLoading(true);
-
-    const membersCollection = collection(db, "users", USER_ID, "members");
-    const paymentsCollection = collection(db, "users", USER_ID, "payments");
-
-    const unsubMembers = onSnapshot(membersCollection, (snapshot) => {
-        const membersList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Member));
-        setMembers(membersList);
+    try {
+        const storedMembers = localStorage.getItem('members');
+        const storedPayments = localStorage.getItem('payments');
+        if (storedMembers) {
+            setMembers(JSON.parse(storedMembers));
+        }
+        if (storedPayments) {
+            setPayments(JSON.parse(storedPayments));
+        }
+    } catch (error) {
+        console.error("Failed to load data from localStorage", error);
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Could not load data from your browser's storage."
+        });
+    } finally {
         setIsLoading(false);
-    });
+    }
+  }, [toast]);
 
-    const unsubPayments = onSnapshot(paymentsCollection, (snapshot) => {
-        const paymentsList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Payment));
-        setPayments(paymentsList);
-    });
-
-    return () => {
-        unsubMembers();
-        unsubPayments();
-    };
-}, []);
+  useEffect(() => {
+    try {
+        localStorage.setItem('members', JSON.stringify(members));
+        localStorage.setItem('payments', JSON.stringify(payments));
+    } catch (error) {
+        console.error("Failed to save data to localStorage", error);
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Could not save data to your browser's storage."
+        });
+    }
+  }, [members, payments, toast]);
 
   
   const membersWithPayments = useMemo(() => {
@@ -199,37 +208,14 @@ export default function PaymentTracker() {
     setIsMemberDialogOpen(true);
   };
 
-  const handleDeleteMember = async () => {
+  const handleDeleteMember = () => {
     if (!memberToDelete) return;
-
-    try {
-        const batch = writeBatch(db);
-
-        // Delete the member document
-        const memberDocRef = doc(db, "users", USER_ID, "members", memberToDelete.id);
-        batch.delete(memberDocRef);
-
-        // Find and delete all payments for that member
-        const paymentsQuery = query(collection(db, "users", USER_ID, "payments"), where("memberId", "==", memberToDelete.id));
-        const paymentsSnapshot = await getDocs(paymentsQuery);
-        paymentsSnapshot.forEach(doc => {
-            batch.delete(doc.ref);
-        });
-
-        await batch.commit();
-
-        toast({
-            title: "Member Deleted",
-            description: `Member ${memberToDelete.name} and all their payment records have been deleted.`
-        });
-    } catch(e) {
-        console.error("Error deleting member: ", e);
-        toast({
-            variant: "destructive",
-            title: "Error",
-            description: "Could not delete member. Please try again."
-        });
-    }
+    setMembers(prev => prev.filter(m => m.id !== memberToDelete.id));
+    setPayments(prev => prev.filter(p => p.memberId !== memberToDelete.id));
+    toast({
+        title: "Member Deleted",
+        description: `Member ${memberToDelete.name} and all their payment records have been deleted.`
+    });
     setMemberToDelete(null);
   };
 
@@ -240,7 +226,7 @@ export default function PaymentTracker() {
     window.open(whatsappUrl, '_blank');
   }
 
-  const onPaymentSubmit = async (values: z.infer<typeof paymentSchema>) => {
+  const onPaymentSubmit = (values: z.infer<typeof paymentSchema>) => {
     if (!selectedMember) return;
 
     const paymentData = {
@@ -249,28 +235,17 @@ export default function PaymentTracker() {
         date: values.date.toISOString(),
     };
 
-    try {
-        if (editingPayment) {
-            const paymentDocRef = doc(db, "users", USER_ID, "payments", editingPayment.id);
-            await updateDoc(paymentDocRef, paymentData);
-            toast({
-                title: "Payment Updated",
-                description: `Payment for ${selectedMember.name} has been updated.`,
-            });
-        } else {
-            const paymentsCollection = collection(db, "users", USER_ID, "payments");
-            await addDoc(paymentsCollection, paymentData);
-            toast({
-                title: "Payment Recorded",
-                description: `Payment for ${selectedMember.name} has been recorded.`,
-            });
-        }
-    } catch (e) {
-        console.error("Error saving payment: ", e);
+    if (editingPayment) {
+        setPayments(prev => prev.map(p => p.id === editingPayment.id ? { ...paymentData, id: p.id } : p));
         toast({
-            variant: "destructive",
-            title: "Error",
-            description: "Could not save payment. Please try again."
+            title: "Payment Updated",
+            description: `Payment for ${selectedMember.name} has been updated.`,
+        });
+    } else {
+        setPayments(prev => [...prev, { ...paymentData, id: Date.now().toString() }]);
+        toast({
+            title: "Payment Recorded",
+            description: `Payment for ${selectedMember.name} has been recorded.`,
         });
     }
     
@@ -279,34 +254,21 @@ export default function PaymentTracker() {
     setEditingPayment(null);
   };
 
-  const onMemberSubmit = async (values: z.infer<typeof memberSchema>) => {
-    const memberData = { ...values };
-
-    try {
-        if (selectedMember) {
-            const memberDocRef = doc(db, "users", USER_ID, "members", selectedMember.id);
-            await updateDoc(memberDocRef, values);
-            toast({
-                title: "Member Updated",
-                description: `Details for ${values.name} have been updated.`,
-            });
-        } else {
-            const membersCollection = collection(db, "users", USER_ID, "members");
-            await addDoc(membersCollection, values);
-            toast({
-                title: "Member Added",
-                description: `${values.name} has been added to the society.`
-            });
-        }
-    } catch (e) {
-        console.error("Error saving member: ", e);
+  const onMemberSubmit = (values: z.infer<typeof memberSchema>) => {
+    if (selectedMember) {
+        setMembers(prev => prev.map(m => m.id === selectedMember.id ? { ...values, id: m.id } : m));
         toast({
-            variant: "destructive",
-            title: "Error",
-            description: "Could not save member. Please try again."
+            title: "Member Updated",
+            description: `Details for ${values.name} have been updated.`,
+        });
+    } else {
+        const newMember = { ...values, id: Date.now().toString() };
+        setMembers(prev => [...prev, newMember]);
+        toast({
+            title: "Member Added",
+            description: `${values.name} has been added to the society.`
         });
     }
-
     setIsMemberDialogOpen(false);
     setSelectedMember(null);
   };
