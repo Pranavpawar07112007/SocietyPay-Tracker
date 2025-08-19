@@ -7,7 +7,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { format, getYear } from 'date-fns';
 import {
-  DollarSign,
   TrendingUp,
   TrendingDown,
   Wallet,
