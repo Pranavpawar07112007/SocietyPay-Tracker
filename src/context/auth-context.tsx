@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { onAuthStateChanged, User } from 'firebase/auth';
+import { onAuthStateChanged, User, setPersistence, browserLocalPersistence } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { usePathname, useRouter } from 'next/navigation';
 
@@ -22,12 +22,30 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const pathname = usePathname();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-        setUser(user);
-        setLoading(false);
-    });
+    const initializeAuth = async () => {
+      try {
+        await setPersistence(auth, browserLocalPersistence);
+      } catch (error) {
+        console.error("Error setting auth persistence:", error);
+      }
+      
+      const unsubscribe = onAuthStateChanged(auth, (user) => {
+          setUser(user);
+          setLoading(false);
+      });
 
-    return () => unsubscribe();
+      return unsubscribe;
+    }
+
+    const unsubscribePromise = initializeAuth();
+
+    return () => {
+      unsubscribePromise.then(unsub => {
+        if (unsub) {
+          unsub();
+        }
+      });
+    };
   }, []);
 
   useEffect(() => {

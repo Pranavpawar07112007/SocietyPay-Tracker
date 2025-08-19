@@ -1,6 +1,6 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { getAuth, browserLocalPersistence, setPersistence } from "firebase/auth";
+import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
@@ -16,13 +16,8 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
-let auth: any;
-let db: any;
+const auth = getAuth(app);
+const db = getFirestore(app);
 
-if (typeof window !== 'undefined') {
-    auth = getAuth(app);
-    setPersistence(auth, browserLocalPersistence);
-    db = getFirestore(app);
-}
 
 export { app, auth, db };
