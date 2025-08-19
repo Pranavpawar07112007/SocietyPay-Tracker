@@ -233,15 +233,21 @@ export default function PaymentTracker() {
     <>
       <Card className="w-full max-w-5xl shadow-lg">
         <CardHeader>
-          <div className="flex items-center space-x-4">
-            <ReceiptText className="h-10 w-10 text-primary" />
-            <div>
-              <CardTitle className="font-headline text-3xl">
-                Aroma Residency - SocietyPay Tracker
-              </CardTitle>
-              <CardDescription>
-                Track and manage monthly maintenance payments for society members for {format(new Date(), 'MMMM yyyy')}.
-              </CardDescription>
+          <div className="flex justify-between items-start">
+            <div className="flex items-center space-x-4">
+              <ReceiptText className="h-10 w-10 text-primary" />
+              <div>
+                <CardTitle className="font-headline text-3xl">
+                  Aroma Residency - SocietyPay Tracker
+                </CardTitle>
+                <CardDescription>
+                  Track and manage monthly maintenance payments for society members.
+                </CardDescription>
+              </div>
+            </div>
+            <div className="text-right">
+                <p className="text-lg font-semibold text-muted-foreground">{format(new Date(), 'MMMM')}</p>
+                <p className="text-sm text-muted-foreground">{format(new Date(), 'yyyy')}</p>
             </div>
           </div>
         </CardHeader>
