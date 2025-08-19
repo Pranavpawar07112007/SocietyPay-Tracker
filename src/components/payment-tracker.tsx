@@ -221,7 +221,7 @@ export default function PaymentTracker() {
 
   const handleSendReminder = (member: Member) => {
     const currentMonth = format(new Date(), 'MMMM');
-    const message = `Dear ${member.name}, this is a friendly reminder that your society maintenance payment for ${currentMonth} is due. Thank you, Deepak Pawar, Secretary, Aroma Residency.`;
+    const message = `Dear ${member.name}, this is a friendly reminder that your society maintenance payment for ${currentMonth} is due. Thank you, Shobha Pawar, Secretary, Aroma Residency.`;
     const whatsappUrl = `https://wa.me/91${member.mobileNumber}?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
   }
