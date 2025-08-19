@@ -437,7 +437,7 @@ export default function PaymentTracker() {
               <ReceiptText className="h-10 w-10 text-primary" />
               <div>
                 <CardTitle className="font-headline text-3xl">
-                  Aroma Residency - SocietyPay Tracker
+                  Aroma Residency Co-operative Housing Society Limited
                 </CardTitle>
                 <CardDescription>
                   Track and manage monthly maintenance payments for society members.
