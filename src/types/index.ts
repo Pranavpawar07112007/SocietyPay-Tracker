@@ -11,6 +11,8 @@ export interface Payment {
   amount: number;
   date: string; // Stored as ISO string
   receiptNumber?: string;
+  paymentMode: 'Cash' | 'Online';
+  transactionId?: string;
 }
 
 export interface Expense {

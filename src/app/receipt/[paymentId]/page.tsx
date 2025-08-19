@@ -222,6 +222,16 @@ export default function ReceiptPage() {
                                     <span className="font-semibold text-muted-foreground">Flat No:</span>
                                     <span>{member.flatNumber}</span>
                                 </div>
+                                <div className="flex justify-between">
+                                    <span className="font-semibold text-muted-foreground">Payment Mode:</span>
+                                    <span>{payment.paymentMode}</span>
+                                </div>
+                                {payment.paymentMode === 'Online' && payment.transactionId && (
+                                     <div className="flex justify-between">
+                                        <span className="font-semibold text-muted-foreground">Transaction ID:</span>
+                                        <span className="font-mono">{payment.transactionId}</span>
+                                    </div>
+                                )}
                             </div>
                              <div className="space-y-4">
                                 <div className="flex justify-between items-center">
