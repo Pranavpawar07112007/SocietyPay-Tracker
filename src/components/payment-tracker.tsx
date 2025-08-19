@@ -410,8 +410,11 @@ export default function PaymentTracker() {
                             mode="single"
                             selected={field.value}
                             onSelect={field.onChange}
+                            captionLayout="dropdown-buttons"
+                            fromYear={2020}
+                            toYear={getYear(new Date())}
                             disabled={(date) =>
-                              date > new Date() || date < new Date("1900-01-01")
+                              date > new Date() || date < new Date("2020-01-01")
                             }
                             initialFocus
                           />

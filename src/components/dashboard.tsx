@@ -5,7 +5,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { format } from 'date-fns';
+import { format, getYear } from 'date-fns';
 import {
   DollarSign,
   TrendingUp,
@@ -359,6 +359,9 @@ export default function Dashboard() {
                                             mode="single"
                                             selected={field.value}
                                             onSelect={field.onChange}
+                                            captionLayout="dropdown-buttons"
+                                            fromYear={2020}
+                                            toYear={getYear(new Date())}
                                             disabled={(date) =>
                                             date > new Date() || date < new Date("2020-01-01")
                                             }
