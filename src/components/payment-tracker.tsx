@@ -237,10 +237,10 @@ export default function PaymentTracker() {
             <ReceiptText className="h-10 w-10 text-primary" />
             <div>
               <CardTitle className="font-headline text-3xl">
-                SocietyPay Tracker ({format(new Date(), 'MMMM yyyy')})
+                Aroma Residency - SocietyPay Tracker
               </CardTitle>
               <CardDescription>
-                Track and manage monthly maintenance payments for society members.
+                Track and manage monthly maintenance payments for society members for {format(new Date(), 'MMMM yyyy')}.
               </CardDescription>
             </div>
           </div>
@@ -426,7 +426,12 @@ export default function PaymentTracker() {
         </DialogContent>
       </Dialog>
       
-      <Dialog open={isMemberDialogOpen} onOpenChange={setIsMemberDialogOpen}>
+      <Dialog open={isMemberDialogOpen} onOpenChange={(isOpen) => {
+          setIsMemberDialogOpen(isOpen);
+          if (!isOpen) {
+              setSelectedMember(null);
+          }
+      }}>
         <DialogContent className="sm:max-w-[425px]">
           <Form {...memberForm}>
             <form onSubmit={memberForm.handleSubmit(onMemberSubmit)} className="space-y-8">

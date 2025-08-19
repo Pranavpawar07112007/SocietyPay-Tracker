@@ -31,7 +31,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -75,7 +74,6 @@ export default function PaymentHistory() {
     toast({
       title: 'Payment Deleted',
       description: 'The payment record has been successfully deleted.',
-      variant: 'destructive',
     });
     setPaymentToDelete(null);
   };
@@ -131,7 +129,7 @@ export default function PaymentHistory() {
       });
     }
 
-    return sortableItems;
+    return sortableItems.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [paymentsWithMemberData, searchTerm, sortConfig]);
 
   return (
@@ -191,7 +189,7 @@ export default function PaymentHistory() {
                   <TableCell>₹{payment.amount.toFixed(2)}</TableCell>
                   <TableCell>{format(new Date(payment.date), 'PPP')}</TableCell>
                   <TableCell className="text-right">
-                    <AlertDialog>
+                    <AlertDialog open={paymentToDelete?.id === payment.id} onOpenChange={(open) => !open && setPaymentToDelete(null)}>
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" className="h-8 w-8 p-0">
@@ -200,12 +198,10 @@ export default function PaymentHistory() {
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                                <AlertDialogTrigger asChild>
-                                    <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setPaymentToDelete(payment); }}>
-                                        <Trash2 className="mr-2 h-4 w-4" />
-                                        <span>Delete</span>
-                                    </DropdownMenuItem>
-                                </AlertDialogTrigger>
+                                <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setPaymentToDelete(payment); }} className="text-red-600">
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    <span>Delete</span>
+                                </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
                         <AlertDialogContent>

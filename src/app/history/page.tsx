@@ -19,7 +19,7 @@ export default function HistoryPage() {
           <div className="flex justify-between items-start">
             <div>
               <CardTitle className="font-headline text-3xl">
-                Payment History
+                Aroma Residency - Payment History
               </CardTitle>
               <CardDescription>
                 View all past maintenance payment records.

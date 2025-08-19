@@ -19,7 +19,7 @@ export default function DashboardPage() {
           <div className="flex justify-between items-start">
             <div>
               <CardTitle className="font-headline text-3xl">
-                Society Dashboard
+                Aroma Residency - Society Dashboard
               </CardTitle>
               <CardDescription>
                 An overview of your society's finances.

@@ -151,7 +151,6 @@ export default function Dashboard() {
     toast({
         title: 'Expense Deleted',
         description: 'The expense record has been successfully deleted.',
-        variant: 'destructive',
     });
     setExpenseToDelete(null);
   };
@@ -242,7 +241,7 @@ export default function Dashboard() {
                             <TableCell>₹{expense.amount.toFixed(2)}</TableCell>
                             <TableCell>{format(new Date(expense.date), 'PPP')}</TableCell>
                             <TableCell className="text-right">
-                                <AlertDialog>
+                                <AlertDialog open={expenseToDelete?.id === expense.id} onOpenChange={(open) => !open && setExpenseToDelete(null)}>
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
                                             <Button variant="ghost" className="h-8 w-8 p-0">
