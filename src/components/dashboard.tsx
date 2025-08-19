@@ -92,6 +92,10 @@ export default function Dashboard() {
 
   const expenseForm = useForm<z.infer<typeof expenseSchema>>({
     resolver: zodResolver(expenseSchema),
+    defaultValues: {
+      description: '',
+      amount: '' as any,
+    }
   });
 
     useEffect(() => {
@@ -411,5 +415,3 @@ export default function Dashboard() {
     </div>
   );
 }
-
-    
