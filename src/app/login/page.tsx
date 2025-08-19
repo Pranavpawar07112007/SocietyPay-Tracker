@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from 'react';
@@ -5,15 +6,17 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import Link from 'next/link';
 import { Eye, EyeOff } from 'lucide-react';
+import Link from 'next/link';
+import { FirebaseError } from 'firebase/app';
 
-import { auth } from '@/lib/firebase';
+import { getFirebaseAuth } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
@@ -29,27 +32,26 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 
-
-const loginSchema = z.object({
+const authSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email address.' }),
-  password: z.string().min(1, { message: 'Password is required.' }),
+  password: z.string().min(6, { message: 'Password must be at least 6 characters.' }),
 });
 
 export default function LoginPage() {
   const { toast } = useToast();
   const router = useRouter();
   const [showPassword, setShowPassword] = React.useState(false);
-
-  const form = useForm<z.infer<typeof loginSchema>>({
-    resolver: zodResolver(loginSchema),
+  const form = useForm<z.infer<typeof authSchema>>({
+    resolver: zodResolver(authSchema),
     defaultValues: {
       email: '',
       password: '',
     },
   });
 
-  const onSubmit = async (values: z.infer<typeof loginSchema>) => {
+  const onSubmit = async (values: z.infer<typeof authSchema>) => {
     try {
+      const auth = getFirebaseAuth();
       await signInWithEmailAndPassword(auth, values.email, values.password);
       toast({
         title: 'Login Successful',
@@ -57,11 +59,19 @@ export default function LoginPage() {
       });
       router.push('/');
     } catch (error: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Login Failed',
-        description: error.message,
-      });
+      if (error instanceof FirebaseError) {
+        let description = "An unknown error occurred.";
+        if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+            description = "Invalid email or password. Please try again.";
+        } else {
+            description = error.message;
+        }
+         toast({
+            variant: 'destructive',
+            title: 'Login Failed',
+            description: description,
+        });
+      }
     }
   };
 
@@ -70,7 +80,7 @@ export default function LoginPage() {
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader className="text-center">
           <CardTitle className="text-3xl font-headline">SocietyPay Tracker</CardTitle>
-          <CardDescription>Please sign in to continue</CardDescription>
+          <CardDescription>Log in to your account</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -95,7 +105,7 @@ export default function LoginPage() {
                   <FormItem>
                     <FormLabel>Password</FormLabel>
                     <FormControl>
-                      <div className="relative">
+                       <div className="relative">
                         <Input type={showPassword ? 'text' : 'password'} placeholder="••••••••" {...field} />
                         <Button
                           type="button"
@@ -114,17 +124,17 @@ export default function LoginPage() {
                 )}
               />
               <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
-                {form.formState.isSubmitting ? 'Signing In...' : 'Sign In'}
+                 {form.formState.isSubmitting ? 'Processing...' : 'Log In'}
               </Button>
             </form>
           </Form>
-          <p className="mt-4 text-center text-sm text-muted-foreground">
-            Don't have an account?{' '}
-            <Link href="/signup" className="font-medium text-primary hover:underline">
-              Sign Up
-            </Link>
-          </p>
         </CardContent>
+        <CardFooter className="flex justify-center text-sm">
+          <p>Don't have an account?&nbsp;</p>
+          <Link href="/signup" className="font-semibold text-primary hover:underline">
+            Sign up
+          </Link>
+        </CardFooter>
       </Card>
     </main>
   );

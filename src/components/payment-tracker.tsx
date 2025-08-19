@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -73,7 +74,7 @@ import { useToast } from "@/hooks/use-toast";
 import type { Member, Payment } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/context/auth-context";
-import { auth, db } from "@/lib/firebase";
+import { db, getFirebaseAuth } from "@/lib/firebase";
 
 const paymentSchema = z.object({
   amount: z.coerce
@@ -458,7 +459,7 @@ export default function PaymentTracker() {
             <div className="text-right flex flex-col items-end gap-2">
                 <div className="flex items-center">
                     <p className="text-sm text-muted-foreground mr-4">Logged in as {user?.email}</p>
-                    <Button variant="ghost" size="icon" onClick={() => auth.signOut()}>
+                    <Button variant="ghost" size="icon" onClick={() => getFirebaseAuth().signOut()}>
                         <LogOut className="h-5 w-5" />
                     </Button>
                 </div>

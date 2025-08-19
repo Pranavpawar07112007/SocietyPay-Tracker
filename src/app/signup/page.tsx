@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from 'react';
@@ -5,15 +6,17 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import Link from 'next/link';
 import { Eye, EyeOff } from 'lucide-react';
+import Link from 'next/link';
+import { FirebaseError } from 'firebase/app';
 
-import { auth } from '@/lib/firebase';
+import { getFirebaseAuth } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
@@ -29,7 +32,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 
-const signupSchema = z.object({
+const authSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email address.' }),
   password: z.string().min(6, { message: 'Password must be at least 6 characters.' }),
 });
@@ -38,16 +41,17 @@ export default function SignupPage() {
   const { toast } = useToast();
   const router = useRouter();
   const [showPassword, setShowPassword] = React.useState(false);
-  const form = useForm<z.infer<typeof signupSchema>>({
-    resolver: zodResolver(signupSchema),
+  const form = useForm<z.infer<typeof authSchema>>({
+    resolver: zodResolver(authSchema),
     defaultValues: {
       email: '',
       password: '',
     },
   });
 
-  const onSubmit = async (values: z.infer<typeof signupSchema>) => {
+  const onSubmit = async (values: z.infer<typeof authSchema>) => {
     try {
+      const auth = getFirebaseAuth();
       await createUserWithEmailAndPassword(auth, values.email, values.password);
       toast({
         title: 'Account Created',
@@ -55,11 +59,19 @@ export default function SignupPage() {
       });
       router.push('/');
     } catch (error: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Sign Up Failed',
-        description: error.message,
-      });
+        if (error instanceof FirebaseError && error.code === 'auth/email-already-in-use') {
+            toast({
+                variant: 'destructive',
+                title: 'Sign Up Failed',
+                description: "This email is already registered. Please log in instead.",
+            });
+        } else {
+            toast({
+                variant: 'destructive',
+                title: 'Sign Up Failed',
+                description: "An unexpected error occurred. Please try again.",
+            });
+        }
     }
   };
 
@@ -67,8 +79,8 @@ export default function SignupPage() {
     <main className="flex min-h-screen flex-col items-center justify-center p-4 bg-background">
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader className="text-center">
-          <CardTitle className="text-3xl font-headline">Create an Account</CardTitle>
-          <CardDescription>Join SocietyPay Tracker today!</CardDescription>
+          <CardTitle className="text-3xl font-headline">SocietyPay Tracker</CardTitle>
+          <CardDescription>Create an account to get started</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -112,17 +124,17 @@ export default function SignupPage() {
                 )}
               />
               <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
-                 {form.formState.isSubmitting ? 'Signing Up...' : 'Sign Up'}
+                 {form.formState.isSubmitting ? 'Processing...' : 'Sign Up'}
               </Button>
             </form>
           </Form>
-          <p className="mt-4 text-center text-sm text-muted-foreground">
-            Already have an account?{' '}
-            <Link href="/login" className="font-medium text-primary hover:underline">
-              Sign In
-            </Link>
-          </p>
         </CardContent>
+        <CardFooter className="flex justify-center text-sm">
+            <p>Already have an account?&nbsp;</p>
+            <Link href="/login" className="font-semibold text-primary hover:underline">
+                Log in
+            </Link>
+        </CardFooter>
       </Card>
     </main>
   );
