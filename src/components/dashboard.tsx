@@ -14,6 +14,7 @@ import {
   Trash2,
   Pencil,
   CalendarIcon,
+  Printer,
 } from 'lucide-react';
 
 import type { Payment, Expense } from '@/types';
@@ -133,6 +134,10 @@ export default function Dashboard() {
   const totalCollection = useMemo(() => payments.reduce((acc, p) => acc + p.amount, 0), [payments]);
   const totalExpense = useMemo(() => expenses.reduce((acc, e) => acc + e.amount, 0), [expenses]);
   const netBalance = totalCollection - totalExpense;
+  
+  const handlePrint = () => {
+    window.print();
+  };
 
   const handleAddExpenseClick = () => {
     setEditingExpense(null);
@@ -211,16 +216,22 @@ export default function Dashboard() {
       <div>
         <div className="flex justify-between items-center mb-4">
             <h2 className="text-2xl font-semibold">Expenses</h2>
-            <Button onClick={handleAddExpenseClick}>Add Expense</Button>
+            <div className="flex gap-2 print-hide">
+              <Button onClick={handleAddExpenseClick}>Add Expense</Button>
+              <Button onClick={handlePrint} variant="outline">
+                  <Printer className="mr-2 h-4 w-4" />
+                  Print Report
+              </Button>
+            </div>
         </div>
-        <div className="rounded-md border">
+        <div className="rounded-md border table-print">
             <Table>
                 <TableHeader>
                     <TableRow>
                         <TableHead>Description</TableHead>
                         <TableHead>Amount</TableHead>
                         <TableHead>Date</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
+                        <TableHead className="text-right print-hide">Actions</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -230,7 +241,7 @@ export default function Dashboard() {
                             <TableCell><Skeleton className="h-5 w-48" /></TableCell>
                             <TableCell><Skeleton className="h-5 w-24" /></TableCell>
                             <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-                            <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
+                            <TableCell className="text-right print-hide"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
                         </TableRow>
                     ))
                 ) : sortedExpenses.length > 0 ? (
@@ -239,7 +250,7 @@ export default function Dashboard() {
                             <TableCell className="font-medium">{expense.description}</TableCell>
                             <TableCell>₹{expense.amount.toFixed(2)}</TableCell>
                             <TableCell>{format(new Date(expense.date), 'PPP')}</TableCell>
-                            <TableCell className="text-right">
+                            <TableCell className="text-right print-hide">
                                 <AlertDialog open={expenseToDelete?.id === expense.id} onOpenChange={(open) => !open && setExpenseToDelete(null)}>
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>

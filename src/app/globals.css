@@ -86,3 +86,36 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+@media print {
+  body {
+    background: white;
+  }
+
+  main > .print-hide,
+  .print-hide {
+    display: none;
+  }
+
+  main > .print-show {
+    display: block;
+  }
+
+  main {
+    padding: 0;
+  }
+
+  @page {
+    size: auto;
+    margin: 0.5in;
+  }
+
+  .card-print {
+    box-shadow: none;
+    border: none;
+  }
+
+  .table-print {
+    border: 1px solid #e2e8f0;
+  }
+}
