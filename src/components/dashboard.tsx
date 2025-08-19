@@ -320,7 +320,7 @@ export default function Dashboard() {
                                 name="amount"
                                 render={({ field }) => (
                                     <FormItem>
-                                    <FormLabel>Amount (₹)</FormLabel>
+                                    <FormLabel>Amount(₹)</FormLabel>
                                     <FormControl>
                                         <Input placeholder="e.g. 10000" type="number" step="0.01" {...field} />
                                     </FormControl>

@@ -372,7 +372,7 @@ export default function PaymentTracker() {
                   name="amount"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Amount (₹)</FormLabel>
+                      <FormLabel>Amount(₹)</FormLabel>
                       <FormControl>
                         <Input placeholder="e.g. 2500" type="number" step="0.01" {...field} />
                       </FormControl>
