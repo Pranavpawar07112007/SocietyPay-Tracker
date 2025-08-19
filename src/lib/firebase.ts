@@ -1,23 +1,27 @@
-// Import the functions you need from the SDKs you need
-import { initializeApp, getApps, getApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+
+import { initializeApp, getApp, getApps, FirebaseApp } from "firebase/app";
+import { getAuth, Auth } from "firebase/auth";
+import { getFirestore, Firestore } from "firebase/firestore";
 
 const firebaseConfig = {
-  "projectId": "societypay-tracker",
-  "appId": "1:553240744713:web:bad8f0a7d25d55746d79d8",
-  "storageBucket": "societypay-tracker.firebasestorage.app",
-  "apiKey": "AIzaSyAHVpFoRNDWZatHy67d1rd7ZI-IZlu-aHM",
-  "authDomain": "societypay-tracker.firebaseapp.com",
-  "measurementId": "",
-  "messagingSenderId": "553240744713"
+    "projectId": "societypay-tracker",
+    "appId": "1:553240744713:web:bad8f0a7d25d55746d79d8",
+    "storageBucket": "societypay-tracker.firebasestorage.app",
+    "apiKey": "AIzaSyAHVpFoRNDWZatHy67d1rd7ZI-IZlu-aHM",
+    "authDomain": "societypay-tracker.firebaseapp.com",
+    "measurementId": "",
+    "messagingSenderId": "553240744713"
 };
 
-// Initialize Firebase
-const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+let app: FirebaseApp;
+let auth: Auth;
+let db: Firestore;
 
-const auth = getAuth(app);
-const db = getFirestore(app);
+if (typeof window !== 'undefined') {
+    app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+    auth = getAuth(app);
+    db = getFirestore(app);
+}
 
-
+// @ts-ignore
 export { app, auth, db };
