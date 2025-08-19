@@ -291,7 +291,7 @@ export default function PaymentHistory() {
                             <AlertDialogDescription>
                                 This action cannot be undone. This will permanently delete the payment
                                 record for {payment.member?.name} on {format(new Date(payment.date), 'PPP')}.
-                            </Alexandresez>
+                            </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                             <AlertDialogCancel onClick={() => setPaymentToDelete(null)}>Cancel</AlertDialogCancel>
