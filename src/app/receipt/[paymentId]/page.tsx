@@ -1,7 +1,8 @@
+
 'use client';
 
 import * as React from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { Printer, ArrowLeft, Loader2, AlertCircle } from 'lucide-react';
@@ -11,11 +12,14 @@ import { Skeleton } from '@/components/ui/skeleton';
 import type { Member, Payment } from '@/types';
 import { getPaymentById, getMemberById } from '@/services/firestore';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/use-auth';
 
 export default function ReceiptPage() {
   const { toast } = useToast();
   const params = useParams();
   const paymentId = params.paymentId as string;
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
 
   const [payment, setPayment] = React.useState<Payment | null>(null);
   const [member, setMember] = React.useState<Member | null>(null);
@@ -23,7 +27,13 @@ export default function ReceiptPage() {
   const [error, setError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
-    if (!paymentId) return;
+    if (!authLoading && !user) {
+      router.push('/login');
+    }
+  }, [user, authLoading, router]);
+
+  React.useEffect(() => {
+    if (!paymentId || !user) return;
 
     const fetchReceiptData = async () => {
       setIsLoading(true);
@@ -53,7 +63,7 @@ export default function ReceiptPage() {
     };
 
     fetchReceiptData();
-  }, [paymentId, toast]);
+  }, [paymentId, toast, user]);
   
   const handlePrint = () => {
     window.print();
@@ -83,6 +93,14 @@ export default function ReceiptPage() {
     return str.trim().split(' ').map(s => s.charAt(0).toUpperCase() + s.substring(1)).join(' ') + ' Only';
   }
 
+  if (authLoading || !user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
     <main className="flex min-h-screen flex-col items-center justify-start p-4 sm:p-8 md:p-12 lg:p-24 bg-background">
         <div className="w-full max-w-2xl">
@@ -102,7 +120,7 @@ export default function ReceiptPage() {
             <Card className="w-full card-print">
                 <CardHeader className="border-b border-border text-center">
                     <div className="flex justify-center items-center gap-2">
-                        <ReceiptText className="h-8 w-8 text-primary" />
+                        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2Z"/></svg>
                         <CardTitle className="font-headline text-3xl">
                             Maintenance Receipt
                         </CardTitle>

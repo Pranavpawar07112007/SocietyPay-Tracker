@@ -1,5 +1,10 @@
+
+'use client';
+
+import * as React from 'react';
 import Link from 'next/link';
-import { Home, ReceiptText } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Home, Loader2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -10,8 +15,26 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import PaymentHistory from '@/components/payment-history';
+import { useAuth } from '@/hooks/use-auth';
 
 export default function HistoryPage() {
+  const { user, loading } = useAuth();
+  const router = useRouter();
+
+  React.useEffect(() => {
+    if (!loading && !user) {
+      router.push('/login');
+    }
+  }, [user, loading, router]);
+
+  if (loading || !user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
     <main className="flex min-h-screen flex-col items-center justify-start p-4 sm:p-8 md:p-12 lg:p-24 bg-background">
       <Card className="w-full max-w-7xl shadow-lg">

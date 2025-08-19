@@ -1,9 +1,33 @@
+
+'use client';
+
+import * as React from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+
 import { Button } from '@/components/ui/button';
 import PaymentTracker from '@/components/payment-tracker';
-import { History, LayoutDashboard } from 'lucide-react';
+import { History, LayoutDashboard, LogOut, Loader2 } from 'lucide-react';
+import { useAuth } from '@/hooks/use-auth';
 
 export default function Home() {
+    const { user, signOut, loading } = useAuth();
+    const router = useRouter();
+
+    React.useEffect(() => {
+        if (!loading && !user) {
+            router.push('/login');
+        }
+    }, [user, loading, router]);
+
+    if (loading || !user) {
+        return (
+            <div className="flex min-h-screen items-center justify-center bg-background">
+                <Loader2 className="h-12 w-12 animate-spin text-primary" />
+            </div>
+        );
+    }
+
   return (
     <main className="flex min-h-screen flex-col items-center justify-start p-4 sm:p-8 md:p-12 lg:p-24 bg-background">
       <div className="w-full max-w-5xl mb-4 flex justify-end gap-2">
@@ -18,6 +42,10 @@ export default function Home() {
             <History className="mr-2 h-4 w-4" />
             View History
           </Link>
+        </Button>
+        <Button variant="outline" onClick={signOut}>
+            <LogOut className="mr-2 h-4 w-4" />
+            Sign Out
         </Button>
       </div>
       <PaymentTracker />
