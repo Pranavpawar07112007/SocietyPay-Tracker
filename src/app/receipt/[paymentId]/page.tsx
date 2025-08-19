@@ -126,6 +126,7 @@ export default function ReceiptPage() {
                         </CardTitle>
                     </div>
                      <p className="text-lg font-semibold text-muted-foreground pt-2">Aroma Residency Co-operative Housing Society Limited</p>
+                     <p className="text-sm text-muted-foreground">Survey no. 26/2/1, Acolade Society Road, Kharadi, Pune-411014</p>
                 </CardHeader>
                 <CardContent className="p-6 space-y-6">
                     {isLoading ? (
@@ -199,5 +200,3 @@ export default function ReceiptPage() {
     </main>
   );
 }
-
-    
