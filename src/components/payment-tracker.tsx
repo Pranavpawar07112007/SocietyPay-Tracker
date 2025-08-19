@@ -411,7 +411,7 @@ export default function PaymentTracker() {
                             selected={field.value}
                             onSelect={field.onChange}
                             captionLayout="dropdown-buttons"
-                            fromYear={2020}
+                            fromYear={getYear(new Date()) - 5}
                             toYear={getYear(new Date())}
                             disabled={(date) =>
                               date > new Date() || date < new Date("2020-01-01")
