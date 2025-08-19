@@ -232,7 +232,7 @@ export default function Dashboard() {
           </div>
           <Dialog open={isExpenseDialogOpen} onOpenChange={setIsExpenseDialogOpen}>
             <DialogTrigger asChild>
-                <Button>
+                <Button className="print-hide">
                     <PlusCircle className="mr-2 h-4 w-4" />
                     Record Expense
                 </Button>
@@ -329,14 +329,14 @@ export default function Dashboard() {
           </Dialog>
         </CardHeader>
         <CardContent>
-          <div className="rounded-md border">
+          <div className="rounded-md border table-print">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Description</TableHead>
                   <TableHead>Amount</TableHead>
                   <TableHead>Date</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead className="text-right print-hide">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -355,7 +355,7 @@ export default function Dashboard() {
                       <TableCell className="font-medium">{expense.description}</TableCell>
                       <TableCell>{formatCurrency(expense.amount)}</TableCell>
                       <TableCell>{format(new Date(expense.date), 'PPP')}</TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right print-hide">
                          <AlertDialog open={expenseToDelete?.id === expense.id} onOpenChange={(open) => !open && setExpenseToDelete(null)}>
                             <Button variant="ghost" size="icon" onClick={() => setExpenseToDelete(expense)} disabled={isPending}>
                                 <Trash2 className="h-4 w-4" />

@@ -1,5 +1,8 @@
+
+'use client';
+
 import Link from 'next/link';
-import { Home, History } from 'lucide-react';
+import { Home, History, Printer } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -12,9 +15,13 @@ import {
 import Dashboard from '@/components/dashboard';
 
 export default function DashboardPage() {
+  const handlePrint = () => {
+    window.print();
+  };
+
   return (
     <main className="flex min-h-screen flex-col items-center justify-start p-4 sm:p-8 md:p-12 lg:p-24 bg-background">
-      <Card className="w-full max-w-7xl shadow-lg">
+      <Card className="w-full max-w-7xl shadow-lg card-print">
         <CardHeader>
           <div className="flex justify-between items-start">
             <div>
@@ -25,7 +32,7 @@ export default function DashboardPage() {
                 An overview of your society's finances.
               </CardDescription>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 print-hide">
                 <Button asChild variant="outline">
                     <Link href="/">
                         <Home className="mr-2 h-4 w-4" />
@@ -37,6 +44,10 @@ export default function DashboardPage() {
                         <History className="mr-2 h-4 w-4" />
                         View History
                     </Link>
+                </Button>
+                <Button onClick={handlePrint}>
+                    <Printer className="mr-2 h-4 w-4" />
+                    Print
                 </Button>
             </div>
           </div>
