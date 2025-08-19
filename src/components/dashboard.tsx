@@ -141,7 +141,7 @@ export default function Dashboard() {
         } else {
             expenseForm.reset({
                 description: '',
-                amount: undefined,
+                amount: '' as any, // Use empty string for controlled input
                 date: new Date(),
             });
         }
@@ -411,3 +411,5 @@ export default function Dashboard() {
     </div>
   );
 }
+
+    

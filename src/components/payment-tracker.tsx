@@ -170,7 +170,7 @@ export default function PaymentTracker() {
         });
       } else {
         paymentForm.reset({
-            amount: undefined,
+            amount: '' as any, // Use empty string for controlled input
             date: new Date(),
         });
       }
@@ -604,3 +604,5 @@ export default function PaymentTracker() {
     </>
   );
 }
+
+    
