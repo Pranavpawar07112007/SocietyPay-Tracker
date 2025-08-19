@@ -3,6 +3,11 @@ export interface Member {
   name: string;
   flatNumber: string;
   mobileNumber: string;
-  amountPaid: number | null;
-  paymentDate: string | null; // Stored as ISO string for localStorage compatibility
+}
+
+export interface Payment {
+  id: string; // Unique ID for the payment, e.g., timestamp
+  memberId: number;
+  amount: number;
+  date: string; // Stored as ISO string
 }

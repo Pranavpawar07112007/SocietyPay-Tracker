@@ -5,8 +5,8 @@ import { useState, useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { format } from "date-fns";
-import { CalendarIcon, CheckCircle2, XCircle, ReceiptText, MoreHorizontal, Edit, Pencil } from "lucide-react";
+import { format, getMonth, getYear, isSameMonth } from "date-fns";
+import { CalendarIcon, CheckCircle2, XCircle, ReceiptText, MoreHorizontal, Pencil } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -57,10 +57,9 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import type { Member } from "@/types";
+import type { Member, Payment } from "@/types";
 import { initialMembers } from "@/data/members";
 import { Skeleton } from "@/components/ui/skeleton";
-
 
 const paymentSchema = z.object({
   amount: z.coerce
@@ -76,14 +75,18 @@ const memberSchema = z.object({
   mobileNumber: z.string().min(10, "Enter a valid mobile number.").max(10, "Enter a valid mobile number."),
 });
 
+type MemberWithPayment = Member & { currentMonthPayment: Payment | null };
+
 export default function PaymentTracker() {
   const { toast } = useToast();
   const [members, setMembers] = useState<Member[]>([]);
+  const [payments, setPayments] = useState<Payment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState("all");
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [isMemberDialogOpen, setIsMemberDialogOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
+  const [editingPayment, setEditingPayment] = useState<Payment | null>(null);
 
   const paymentForm = useForm<z.infer<typeof paymentSchema>>({
     resolver: zodResolver(paymentSchema),
@@ -96,16 +99,25 @@ export default function PaymentTracker() {
   useEffect(() => {
     try {
       const savedMembers = localStorage.getItem("societyMembers");
+      const savedPayments = localStorage.getItem("societyPayments");
+      
       const parsedMembers = savedMembers ? JSON.parse(savedMembers) : initialMembers;
-      // Simple migration for users who have old data without mobileNumber
-      const migratedMembers = parsedMembers.map((m: Member) => ({
-        ...m,
-        mobileNumber: m.mobileNumber || '9876543210'
+      // Simple migration for users who have old data
+      const migratedMembers = parsedMembers.map((m: any) => ({
+        id: m.id,
+        name: m.name,
+        flatNumber: m.flatNumber,
+        mobileNumber: m.mobileNumber || '9876543210',
       }));
+
+      const parsedPayments = savedPayments ? JSON.parse(savedPayments) : [];
+
       setMembers(migratedMembers);
+      setPayments(parsedPayments);
     } catch (error) {
-      console.error("Failed to load members from localStorage", error);
+      console.error("Failed to load data from localStorage", error);
       setMembers(initialMembers);
+      setPayments([]);
     }
     setIsLoading(false);
   }, []);
@@ -113,26 +125,44 @@ export default function PaymentTracker() {
   useEffect(() => {
     if (!isLoading) {
       localStorage.setItem("societyMembers", JSON.stringify(members));
+      localStorage.setItem("societyPayments", JSON.stringify(payments));
     }
-  }, [members, isLoading]);
+  }, [members, payments, isLoading]);
+  
+  const membersWithPayments = useMemo(() => {
+    const today = new Date();
+    return members.map((member) => {
+      const currentMonthPayment = payments.find(p => p.memberId === member.id && isSameMonth(new Date(p.date), today)) || null;
+      return { ...member, currentMonthPayment };
+    });
+  }, [members, payments]);
+
 
   useEffect(() => {
-    if (selectedMember) {
-      paymentForm.reset({
-        amount: selectedMember.amountPaid ?? undefined,
-        date: selectedMember.paymentDate
-          ? new Date(selectedMember.paymentDate)
-          : undefined,
-      });
+    if (isPaymentDialogOpen) {
+      if (editingPayment) {
+        paymentForm.reset({
+          amount: editingPayment.amount,
+          date: new Date(editingPayment.date),
+        });
+      } else {
+        paymentForm.reset({
+            amount: undefined,
+            date: new Date(),
+        });
+      }
+    }
+    if (isMemberDialogOpen && selectedMember) {
       memberForm.reset({
         name: selectedMember.name,
         mobileNumber: selectedMember.mobileNumber,
       })
     }
-  }, [selectedMember, paymentForm, memberForm]);
+  }, [isPaymentDialogOpen, isMemberDialogOpen, editingPayment, selectedMember, paymentForm, memberForm]);
 
-  const handleRecordPaymentClick = (member: Member) => {
+  const handleRecordPaymentClick = (member: MemberWithPayment) => {
     setSelectedMember(member);
+    setEditingPayment(member.currentMonthPayment);
     setIsPaymentDialogOpen(true);
   };
   
@@ -144,25 +174,31 @@ export default function PaymentTracker() {
   const onPaymentSubmit = (values: z.infer<typeof paymentSchema>) => {
     if (!selectedMember) return;
 
-    setMembers(
-      members.map((m) =>
-        m.id === selectedMember.id
-          ? {
-              ...m,
-              amountPaid: values.amount,
-              paymentDate: values.date.toISOString(),
-            }
-          : m
-      )
-    );
-    toast({
-      title: "Payment Recorded",
-      description: `Payment for ${selectedMember.name} has been updated.`,
-      variant: "default",
-      className: "bg-accent text-accent-foreground",
-    });
+    if (editingPayment) {
+      // Edit existing payment
+      setPayments(payments.map(p => p.id === editingPayment.id ? { ...p, amount: values.amount, date: values.date.toISOString() } : p));
+      toast({
+        title: "Payment Updated",
+        description: `Payment for ${selectedMember.name} has been updated.`,
+      });
+    } else {
+      // Record new payment
+      const newPayment: Payment = {
+        id: new Date().toISOString(),
+        memberId: selectedMember.id,
+        amount: values.amount,
+        date: values.date.toISOString(),
+      };
+      setPayments([...payments, newPayment]);
+      toast({
+        title: "Payment Recorded",
+        description: `Payment for ${selectedMember.name} has been recorded.`,
+      });
+    }
+    
     setIsPaymentDialogOpen(false);
     setSelectedMember(null);
+    setEditingPayment(null);
   };
 
   const onMemberSubmit = (values: z.infer<typeof memberSchema>) => {
@@ -181,16 +217,15 @@ export default function PaymentTracker() {
     setSelectedMember(null);
   };
 
-
   const filteredMembers = useMemo(() => {
     if (filter === "paid") {
-      return members.filter((member) => member.amountPaid !== null);
+      return membersWithPayments.filter((member) => member.currentMonthPayment !== null);
     }
     if (filter === "unpaid") {
-      return members.filter((member) => member.amountPaid === null);
+      return membersWithPayments.filter((member) => member.currentMonthPayment === null);
     }
-    return members;
-  }, [members, filter]);
+    return membersWithPayments;
+  }, [membersWithPayments, filter]);
 
   return (
     <>
@@ -200,7 +235,7 @@ export default function PaymentTracker() {
             <ReceiptText className="h-10 w-10 text-primary" />
             <div>
               <CardTitle className="font-headline text-3xl">
-                SocietyPay Tracker
+                SocietyPay Tracker ({format(new Date(), 'MMMM yyyy')})
               </CardTitle>
               <CardDescription>
                 Track and manage monthly maintenance payments for society members.
@@ -249,15 +284,15 @@ export default function PaymentTracker() {
                           <TableCell>{member.flatNumber}</TableCell>
                           <TableCell>{member.mobileNumber}</TableCell>
                           <TableCell>
-                            {member.amountPaid ? `₹${member.amountPaid.toFixed(2)}` : "N/A"}
+                            {member.currentMonthPayment ? `₹${member.currentMonthPayment.amount.toFixed(2)}` : "N/A"}
                           </TableCell>
                           <TableCell>
-                            {member.paymentDate
-                              ? format(new Date(member.paymentDate), "PPP")
+                            {member.currentMonthPayment
+                              ? format(new Date(member.currentMonthPayment.date), "PPP")
                               : "N/A"}
                           </TableCell>
                           <TableCell>
-                            {member.amountPaid ? (
+                            {member.currentMonthPayment ? (
                               <Badge className="bg-accent text-accent-foreground hover:bg-accent/80">
                                 <CheckCircle2 className="mr-2 h-4 w-4" />
                                 Paid
@@ -284,7 +319,7 @@ export default function PaymentTracker() {
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => handleRecordPaymentClick(member)}>
                                   <ReceiptText className="mr-2 h-4 w-4" />
-                                  <span>{member.amountPaid ? "Edit Payment" : "Record Payment"}</span>
+                                  <span>{member.currentMonthPayment ? "Edit Payment" : "Record Payment"}</span>
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
@@ -306,12 +341,18 @@ export default function PaymentTracker() {
         </CardContent>
       </Card>
 
-      <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
+      <Dialog open={isPaymentDialogOpen} onOpenChange={(isOpen) => {
+          setIsPaymentDialogOpen(isOpen);
+          if (!isOpen) {
+              setSelectedMember(null);
+              setEditingPayment(null);
+          }
+      }}>
         <DialogContent className="sm:max-w-[425px]">
           <Form {...paymentForm}>
             <form onSubmit={paymentForm.handleSubmit(onPaymentSubmit)} className="space-y-8">
               <DialogHeader>
-                <DialogTitle>Record Payment for {selectedMember?.name}</DialogTitle>
+                <DialogTitle>{editingPayment ? 'Edit' : 'Record'} Payment for {selectedMember?.name}</DialogTitle>
                 <DialogDescription>
                   Enter the amount and date of the maintenance payment.
                 </DialogDescription>
