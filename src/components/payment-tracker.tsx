@@ -6,7 +6,9 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { format, getMonth, getYear, isSameMonth } from "date-fns";
-import { CalendarIcon, CheckCircle2, XCircle, ReceiptText, MoreHorizontal, Pencil, UserPlus, Trash2, MessageSquare } from "lucide-react";
+import { CalendarIcon, CheckCircle2, XCircle, ReceiptText, MoreHorizontal, Pencil, UserPlus, Trash2, MessageSquare, LogOut } from "lucide-react";
+import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, query, where, getDocs, writeBatch } from "firebase/firestore";
+
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -69,8 +71,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import type { Member, Payment } from "@/types";
-import { initialMembers } from "@/data/members";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useAuth } from "@/context/auth-context";
+import { auth, db } from "@/lib/firebase";
 
 const paymentSchema = z.object({
   amount: z.coerce
@@ -91,6 +94,7 @@ type MemberWithPayment = Member & { currentMonthPayment: Payment | null };
 
 export default function PaymentTracker() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [members, setMembers] = useState<Member[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -116,37 +120,29 @@ export default function PaymentTracker() {
   });
 
   useEffect(() => {
-    try {
-      const savedMembers = localStorage.getItem("societyMembers");
-      const savedPayments = localStorage.getItem("societyPayments");
-      
-      const parsedMembers = savedMembers ? JSON.parse(savedMembers) : initialMembers;
-      // Simple migration for users who have old data
-      const migratedMembers = parsedMembers.map((m: any) => ({
-        id: m.id,
-        name: m.name,
-        flatNumber: m.flatNumber,
-        mobileNumber: m.mobileNumber || '9876543210',
-      }));
+    if (!user) return;
+    setIsLoading(true);
 
-      const parsedPayments = savedPayments ? JSON.parse(savedPayments) : [];
+    const membersCollection = collection(db, "users", user.uid, "members");
+    const paymentsCollection = collection(db, "users", user.uid, "payments");
 
-      setMembers(migratedMembers);
-      setPayments(parsedPayments);
-    } catch (error) {
-      console.error("Failed to load data from localStorage", error);
-      setMembers(initialMembers);
-      setPayments([]);
-    }
-    setIsLoading(false);
-  }, []);
+    const unsubMembers = onSnapshot(membersCollection, (snapshot) => {
+        const membersList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Member));
+        setMembers(membersList);
+        setIsLoading(false);
+    });
 
-  useEffect(() => {
-    if (!isLoading) {
-      localStorage.setItem("societyMembers", JSON.stringify(members));
-      localStorage.setItem("societyPayments", JSON.stringify(payments));
-    }
-  }, [members, payments, isLoading]);
+    const unsubPayments = onSnapshot(paymentsCollection, (snapshot) => {
+        const paymentsList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Payment));
+        setPayments(paymentsList);
+    });
+
+    return () => {
+        unsubMembers();
+        unsubPayments();
+    };
+}, [user]);
+
   
   const membersWithPayments = useMemo(() => {
     const today = new Date();
@@ -204,48 +200,79 @@ export default function PaymentTracker() {
     setIsMemberDialogOpen(true);
   };
 
-  const handleDeleteMember = () => {
-    if (!memberToDelete) return;
-    setMembers(members.filter(m => m.id !== memberToDelete.id));
-    // Also delete their payments
-    setPayments(payments.filter(p => p.memberId !== memberToDelete.id));
-    toast({
-        title: "Member Deleted",
-        description: `Member ${memberToDelete.name} and all their payment records have been deleted.`
-    });
+  const handleDeleteMember = async () => {
+    if (!memberToDelete || !user) return;
+
+    try {
+        const batch = writeBatch(db);
+
+        // Delete the member document
+        const memberDocRef = doc(db, "users", user.uid, "members", memberToDelete.id);
+        batch.delete(memberDocRef);
+
+        // Find and delete all payments for that member
+        const paymentsQuery = query(collection(db, "users", user.uid, "payments"), where("memberId", "==", memberToDelete.id));
+        const paymentsSnapshot = await getDocs(paymentsQuery);
+        paymentsSnapshot.forEach(doc => {
+            batch.delete(doc.ref);
+        });
+
+        await batch.commit();
+
+        toast({
+            title: "Member Deleted",
+            description: `Member ${memberToDelete.name} and all their payment records have been deleted.`
+        });
+    } catch(e) {
+        console.error("Error deleting member: ", e);
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Could not delete member. Please try again."
+        });
+    }
     setMemberToDelete(null);
   };
 
   const handleSendReminder = (member: Member) => {
     const currentMonth = format(new Date(), 'MMMM');
     const message = `Dear ${member.name}, this is a friendly reminder that your society maintenance payment for ${currentMonth} is due. Thank you, Deepak Pawar, Secretary, Aroma Residency.`;
-    const whatsappUrl = `https://wa.me/${member.mobileNumber}?text=${encodeURIComponent(message)}`;
+    const whatsappUrl = `https://wa.me/91${member.mobileNumber}?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
   }
 
-  const onPaymentSubmit = (values: z.infer<typeof paymentSchema>) => {
-    if (!selectedMember) return;
+  const onPaymentSubmit = async (values: z.infer<typeof paymentSchema>) => {
+    if (!selectedMember || !user) return;
 
-    if (editingPayment) {
-      // Edit existing payment
-      setPayments(payments.map(p => p.id === editingPayment.id ? { ...p, amount: values.amount, date: values.date.toISOString() } : p));
-      toast({
-        title: "Payment Updated",
-        description: `Payment for ${selectedMember.name} has been updated.`,
-      });
-    } else {
-      // Record new payment
-      const newPayment: Payment = {
-        id: new Date().toISOString(),
+    const paymentData = {
         memberId: selectedMember.id,
         amount: values.amount,
         date: values.date.toISOString(),
-      };
-      setPayments([...payments, newPayment]);
-      toast({
-        title: "Payment Recorded",
-        description: `Payment for ${selectedMember.name} has been recorded.`,
-      });
+    };
+
+    try {
+        if (editingPayment) {
+            const paymentDocRef = doc(db, "users", user.uid, "payments", editingPayment.id);
+            await updateDoc(paymentDocRef, paymentData);
+            toast({
+                title: "Payment Updated",
+                description: `Payment for ${selectedMember.name} has been updated.`,
+            });
+        } else {
+            const paymentsCollection = collection(db, "users", user.uid, "payments");
+            await addDoc(paymentsCollection, paymentData);
+            toast({
+                title: "Payment Recorded",
+                description: `Payment for ${selectedMember.name} has been recorded.`,
+            });
+        }
+    } catch (e) {
+        console.error("Error saving payment: ", e);
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Could not save payment. Please try again."
+        });
     }
     
     setIsPaymentDialogOpen(false);
@@ -253,26 +280,32 @@ export default function PaymentTracker() {
     setEditingPayment(null);
   };
 
-  const onMemberSubmit = (values: z.infer<typeof memberSchema>) => {
-    if (selectedMember) {
-        setMembers(
-          members.map((m) =>
-            m.id === selectedMember.id ? { ...m, ...values } : m
-          )
-        );
+  const onMemberSubmit = async (values: z.infer<typeof memberSchema>) => {
+    if (!user) return;
+    const memberData = { ...values, userId: user.uid };
+
+    try {
+        if (selectedMember) {
+            const memberDocRef = doc(db, "users", user.uid, "members", selectedMember.id);
+            await updateDoc(memberDocRef, values);
+            toast({
+                title: "Member Updated",
+                description: `Details for ${values.name} have been updated.`,
+            });
+        } else {
+            const membersCollection = collection(db, "users", user.uid, "members");
+            await addDoc(membersCollection, values);
+            toast({
+                title: "Member Added",
+                description: `${values.name} has been added to the society.`
+            });
+        }
+    } catch (e) {
+        console.error("Error saving member: ", e);
         toast({
-          title: "Member Updated",
-          description: `Details for ${values.name} have been updated.`,
-        });
-    } else {
-        const newMember: Member = {
-            id: Date.now(),
-            ...values,
-        };
-        setMembers([...members, newMember]);
-        toast({
-            title: "Member Added",
-            description: `${values.name} has been added to the society.`
+            variant: "destructive",
+            title: "Error",
+            description: "Could not save member. Please try again."
         });
     }
 
@@ -422,9 +455,17 @@ export default function PaymentTracker() {
                 </CardDescription>
               </div>
             </div>
-            <div className="text-right">
-                <p className="text-lg font-semibold text-muted-foreground">{format(new Date(), 'MMMM')}</p>
-                <p className="text-sm text-muted-foreground">{format(new Date(), 'yyyy')}</p>
+            <div className="text-right flex flex-col items-end gap-2">
+                <div className="flex items-center">
+                    <p className="text-sm text-muted-foreground mr-4">Logged in as {user?.email}</p>
+                    <Button variant="ghost" size="icon" onClick={() => auth.signOut()}>
+                        <LogOut className="h-5 w-5" />
+                    </Button>
+                </div>
+                <div>
+                    <p className="text-lg font-semibold text-muted-foreground">{format(new Date(), 'MMMM')}</p>
+                    <p className="text-sm text-muted-foreground">{format(new Date(), 'yyyy')}</p>
+                </div>
             </div>
           </div>
         </CardHeader>
@@ -609,5 +650,3 @@ export default function PaymentTracker() {
     </>
   );
 }
-
-    

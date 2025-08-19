@@ -6,6 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { format, getYear } from 'date-fns';
+import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc } from "firebase/firestore";
 import {
   TrendingUp,
   TrendingDown,
@@ -70,6 +71,8 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/context/auth-context';
+import { db } from '@/lib/firebase';
 
 const expenseSchema = z.object({
   description: z.string().min(1, 'Description is required.'),
@@ -83,6 +86,7 @@ const expenseSchema = z.object({
 
 export default function Dashboard() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [payments, setPayments] = useState<Payment[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -95,22 +99,29 @@ export default function Dashboard() {
   });
 
   useEffect(() => {
-    try {
-      const savedPayments = localStorage.getItem('societyPayments');
-      const savedExpenses = localStorage.getItem('societyExpenses');
-      setPayments(savedPayments ? JSON.parse(savedPayments) : []);
-      setExpenses(savedExpenses ? JSON.parse(savedExpenses) : []);
-    } catch (error) {
-      console.error('Failed to load data from localStorage', error);
-    }
-    setIsLoading(false);
-  }, []);
+    if (!user) return;
+    setIsLoading(true);
 
-  useEffect(() => {
-    if (!isLoading) {
-      localStorage.setItem('societyExpenses', JSON.stringify(expenses));
-    }
-  }, [expenses, isLoading]);
+    const paymentsCollection = collection(db, "users", user.uid, "payments");
+    const expensesCollection = collection(db, "users", user.uid, "expenses");
+    
+    const unsubPayments = onSnapshot(paymentsCollection, (snapshot) => {
+        const paymentsList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Payment));
+        setPayments(paymentsList);
+    });
+
+    const unsubExpenses = onSnapshot(expensesCollection, (snapshot) => {
+        const expensesList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Expense));
+        setExpenses(expensesList);
+    });
+
+    setIsLoading(false);
+
+    return () => {
+        unsubPayments();
+        unsubExpenses();
+    };
+}, [user]);
 
   useEffect(() => {
     if (isExpenseDialogOpen) {
@@ -149,29 +160,48 @@ export default function Dashboard() {
     setIsExpenseDialogOpen(true);
   };
   
-  const handleDeleteExpense = () => {
-    if (!expenseToDelete) return;
-    setExpenses(expenses.filter((e) => e.id !== expenseToDelete.id));
-    toast({
-        title: 'Expense Deleted',
-        description: 'The expense record has been successfully deleted.',
-    });
+  const handleDeleteExpense = async () => {
+    if (!expenseToDelete || !user) return;
+    try {
+        await deleteDoc(doc(db, "users", user.uid, "expenses", expenseToDelete.id));
+        toast({
+            title: 'Expense Deleted',
+            description: 'The expense record has been successfully deleted.',
+        });
+    } catch(e) {
+        console.error("Error deleting expense: ", e);
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Could not delete expense. Please try again."
+        });
+    }
     setExpenseToDelete(null);
   };
 
-  const onExpenseSubmit = (values: z.infer<typeof expenseSchema>) => {
-    if (editingExpense) {
-        setExpenses(expenses.map(e => e.id === editingExpense.id ? { ...e, ...values, date: values.date.toISOString() } : e));
-        toast({ title: 'Expense Updated' });
-    } else {
-        const newExpense: Expense = {
-            id: new Date().toISOString(),
-            ...values,
-            date: values.date.toISOString(),
-        };
-        setExpenses([...expenses, newExpense]);
-        toast({ title: 'Expense Added' });
+  const onExpenseSubmit = async (values: z.infer<typeof expenseSchema>) => {
+    if (!user) return;
+    const expenseData = { ...values, date: values.date.toISOString() };
+
+    try {
+        if (editingExpense) {
+            const expenseDocRef = doc(db, "users", user.uid, "expenses", editingExpense.id);
+            await updateDoc(expenseDocRef, expenseData);
+            toast({ title: 'Expense Updated' });
+        } else {
+            const expensesCollection = collection(db, "users", user.uid, "expenses");
+            await addDoc(expensesCollection, expenseData);
+            toast({ title: 'Expense Added' });
+        }
+    } catch(e) {
+        console.error("Error saving expense: ", e);
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Could not save expense. Please try again."
+        });
     }
+    
     setIsExpenseDialogOpen(false);
     setEditingExpense(null);
   }

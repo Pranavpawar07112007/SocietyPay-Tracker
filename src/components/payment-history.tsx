@@ -4,6 +4,7 @@ import * as React from 'react';
 import { useState, useEffect, useMemo } from 'react';
 import { getMonth, getYear, format } from 'date-fns';
 import { ArrowUpDown, Trash2, Search, MoreHorizontal } from 'lucide-react';
+import { collection, onSnapshot, doc, deleteDoc } from "firebase/firestore";
 
 import type { Member, Payment } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -41,7 +42,8 @@ import {
 } from "@/components/ui/select"
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
-
+import { useAuth } from '@/context/auth-context';
+import { db } from '@/lib/firebase';
 
 type PaymentWithMember = Payment & { member: Member | undefined };
 type SortKey = keyof PaymentWithMember | 'member.name' | 'member.flatNumber';
@@ -51,6 +53,7 @@ const ALL_YEARS = "all-years";
 
 export default function PaymentHistory() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [members, setMembers] = useState<Member[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -61,31 +64,47 @@ export default function PaymentHistory() {
   const [selectedYear, setSelectedYear] = useState<string>(ALL_YEARS);
 
   useEffect(() => {
-    try {
-      const savedMembers = localStorage.getItem('societyMembers');
-      const savedPayments = localStorage.getItem('societyPayments');
-      setMembers(savedMembers ? JSON.parse(savedMembers) : []);
-      setPayments(savedPayments ? JSON.parse(savedPayments) : []);
-    } catch (error) {
-      console.error('Failed to load data from localStorage', error);
-    }
-    setIsLoading(false);
-  }, []);
-  
-  useEffect(() => {
-    if(!isLoading) {
-        localStorage.setItem("societyPayments", JSON.stringify(payments));
-    }
-  }, [payments, isLoading]);
+    if (!user) return;
+    setIsLoading(true);
 
-  const handleDeletePayment = () => {
-    if (!paymentToDelete) return;
-
-    setPayments(payments.filter((p) => p.id !== paymentToDelete.id));
-    toast({
-      title: 'Payment Deleted',
-      description: 'The payment record has been successfully deleted.',
+    const membersCollection = collection(db, "users", user.uid, "members");
+    const paymentsCollection = collection(db, "users", user.uid, "payments");
+    
+    const unsubMembers = onSnapshot(membersCollection, (snapshot) => {
+        const membersList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Member));
+        setMembers(membersList);
     });
+
+    const unsubPayments = onSnapshot(paymentsCollection, (snapshot) => {
+        const paymentsList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Payment));
+        setPayments(paymentsList);
+    });
+
+    setIsLoading(false);
+
+    return () => {
+        unsubMembers();
+        unsubPayments();
+    };
+}, [user]);
+
+  const handleDeletePayment = async () => {
+    if (!paymentToDelete || !user) return;
+
+    try {
+        await deleteDoc(doc(db, "users", user.uid, "payments", paymentToDelete.id));
+        toast({
+          title: 'Payment Deleted',
+          description: 'The payment record has been successfully deleted.',
+        });
+    } catch(e) {
+        console.error("Error deleting payment: ", e);
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Could not delete payment. Please try again."
+        });
+    }
     setPaymentToDelete(null);
   };
 

@@ -1,5 +1,5 @@
 export interface Member {
-  id: number;
+  id: string;
   name: string;
   flatNumber: string;
   mobileNumber: string;
@@ -7,7 +7,7 @@ export interface Member {
 
 export interface Payment {
   id: string; // Unique ID for the payment, e.g., timestamp
-  memberId: number;
+  memberId: string;
   amount: number;
   date: string; // Stored as ISO string
 }
