@@ -1,6 +1,6 @@
 'use server';
 import { db } from '@/lib/firebase';
-import { Member, Payment } from '@/types';
+import { Member, Payment, Expense } from '@/types';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where, writeBatch } from 'firebase/firestore';
 
 export async function getMembers(): Promise<Member[]> {
@@ -58,4 +58,22 @@ export async function updatePayment(id: string, payment: Partial<Payment>): Prom
 export async function deletePayment(id: string): Promise<void> {
     const paymentDoc = doc(db, 'payments', id);
     await deleteDoc(paymentDoc);
+}
+
+// Expense Functions
+export async function getExpenses(): Promise<Expense[]> {
+    const expensesCol = collection(db, 'expenses');
+    const expenseSnapshot = await getDocs(expensesCol);
+    const expenseList = expenseSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Expense));
+    return expenseList;
+}
+
+export async function addExpense(expense: Omit<Expense, 'id'>): Promise<Expense> {
+    const docRef = await addDoc(collection(db, 'expenses'), expense);
+    return { id: docRef.id, ...expense };
+}
+
+export async function deleteExpense(id: string): Promise<void> {
+    const expenseDoc = doc(db, 'expenses', id);
+    await deleteDoc(expenseDoc);
 }
