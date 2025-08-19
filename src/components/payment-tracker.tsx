@@ -72,6 +72,7 @@ const paymentSchema = z.object({
 
 const memberSchema = z.object({
   name: z.string().min(1, "Name is required."),
+  flatNumber: z.string().min(1, "Flat number is required."),
   mobileNumber: z.string().min(10, "Enter a valid mobile number.").max(10, "Enter a valid mobile number."),
 });
 
@@ -155,6 +156,7 @@ export default function PaymentTracker() {
     if (isMemberDialogOpen && selectedMember) {
       memberForm.reset({
         name: selectedMember.name,
+        flatNumber: selectedMember.flatNumber,
         mobileNumber: selectedMember.mobileNumber,
       })
     }
@@ -431,7 +433,7 @@ export default function PaymentTracker() {
               <DialogHeader>
                 <DialogTitle>Edit Member Details</DialogTitle>
                 <DialogDescription>
-                  Update the member's name and mobile number.
+                  Update the member's details.
                 </DialogDescription>
               </DialogHeader>
               
@@ -444,6 +446,19 @@ export default function PaymentTracker() {
                       <FormLabel>Name</FormLabel>
                       <FormControl>
                         <Input placeholder="e.g. Ramesh Kumar" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={memberForm.control}
+                  name="flatNumber"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Flat No.</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g. A-101" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
