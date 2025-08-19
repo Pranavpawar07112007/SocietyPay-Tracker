@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { format, getMonth, getYear, isSameMonth } from "date-fns";
-import { CalendarIcon, CheckCircle2, XCircle, ReceiptText, MoreHorizontal, Pencil, UserPlus } from "lucide-react";
+import { CalendarIcon, CheckCircle2, XCircle, ReceiptText, MoreHorizontal, Pencil, UserPlus, Trash2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -27,9 +27,20 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -88,6 +99,8 @@ export default function PaymentTracker() {
   const [isMemberDialogOpen, setIsMemberDialogOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [editingPayment, setEditingPayment] = useState<Payment | null>(null);
+  const [memberToDelete, setMemberToDelete] = useState<Member | null>(null);
+
 
   const paymentForm = useForm<z.infer<typeof paymentSchema>>({
     resolver: zodResolver(paymentSchema),
@@ -140,7 +153,7 @@ export default function PaymentTracker() {
     return members.map((member) => {
       const currentMonthPayment = payments.find(p => p.memberId === member.id && isSameMonth(new Date(p.date), today)) || null;
       return { ...member, currentMonthPayment };
-    });
+    }).sort((a, b) => a.flatNumber.localeCompare(b.flatNumber));
   }, [members, payments]);
 
 
@@ -189,6 +202,18 @@ export default function PaymentTracker() {
   const handleAddMemberClick = () => {
     setSelectedMember(null);
     setIsMemberDialogOpen(true);
+  };
+
+  const handleDeleteMember = () => {
+    if (!memberToDelete) return;
+    setMembers(members.filter(m => m.id !== memberToDelete.id));
+    // Also delete their payments
+    setPayments(payments.filter(p => p.memberId !== memberToDelete.id));
+    toast({
+        title: "Member Deleted",
+        description: `Member ${memberToDelete.name} and all their payment records have been deleted.`
+    });
+    setMemberToDelete(null);
   };
 
   const onPaymentSubmit = (values: z.infer<typeof paymentSchema>) => {
@@ -258,6 +283,116 @@ export default function PaymentTracker() {
     return membersWithPayments;
   }, [membersWithPayments, filter]);
 
+  const renderTable = (memberList: MemberWithPayment[]) => (
+    <div className="rounded-md border">
+        <Table>
+        <TableHeader>
+            <TableRow>
+            <TableHead className="w-[200px]">Member Name</TableHead>
+            <TableHead>Flat No.</TableHead>
+            <TableHead>Mobile No.</TableHead>
+            <TableHead>Amount Paid</TableHead>
+            <TableHead>Payment Date</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+        </TableHeader>
+        <TableBody>
+            {isLoading ? (
+            Array.from({ length: 5 }).map((_, i) => (
+                <TableRow key={i}>
+                <TableCell><Skeleton className="h-5 w-32" /></TableCell>
+                <TableCell><Skeleton className="h-5 w-16" /></TableCell>
+                <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+                <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                <TableCell><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
+                <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
+                </TableRow>
+            ))
+            ) : memberList.length > 0 ? (
+                memberList.map((member) => (
+                <TableRow key={member.id}>
+                <TableCell className="font-medium">{member.name}</TableCell>
+                <TableCell>{member.flatNumber}</TableCell>
+                <TableCell>{member.mobileNumber}</TableCell>
+                <TableCell>
+                    {member.currentMonthPayment ? `₹${member.currentMonthPayment.amount.toFixed(2)}` : "N/A"}
+                </TableCell>
+                <TableCell>
+                    {member.currentMonthPayment
+                    ? format(new Date(member.currentMonthPayment.date), "PPP")
+                    : "N/A"}
+                </TableCell>
+                <TableCell>
+                    {member.currentMonthPayment ? (
+                    <Badge className="bg-accent text-accent-foreground hover:bg-accent/80">
+                        <CheckCircle2 className="mr-2 h-4 w-4" />
+                        Paid
+                    </Badge>
+                    ) : (
+                    <Badge variant="destructive">
+                        <XCircle className="mr-2 h-4 w-4" />
+                        Unpaid
+                    </Badge>
+                    )}
+                </TableCell>
+                <TableCell className="text-right">
+                    <AlertDialog open={memberToDelete?.id === member.id} onOpenChange={(open) => !open && setMemberToDelete(null)}>
+                        <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                            <span className="sr-only">Open menu</span>
+                            <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleRecordPaymentClick(member)}>
+                            <ReceiptText className="mr-2 h-4 w-4" />
+                            <span>{member.currentMonthPayment ? "Edit Payment" : "Record Payment"}</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleEditMemberClick(member)}>
+                            <Pencil className="mr-2 h-4 w-4" />
+                            <span>Edit Member</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem className="text-red-600" onSelect={(e) => { e.preventDefault(); setMemberToDelete(member); }}>
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete Member
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                        </DropdownMenu>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                This action cannot be undone. This will permanently delete {memberToDelete?.name} and all their payment records.
+                            </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                            <AlertDialogCancel onClick={() => setMemberToDelete(null)}>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleDeleteMember}>Delete</AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                </TableCell>
+                </TableRow>
+            ))
+            ) : (
+            <TableRow>
+                <TableCell colSpan={7} className="h-24 text-center">
+                    {filter === 'all' ? 'No members added yet.' : 
+                     filter === 'paid' ? 'No members have paid yet for this month.' :
+                     filter === 'unpaid' ? 'All members have paid for this month.' :
+                     'No members found for this filter.'}
+                </TableCell>
+            </TableRow>
+            )}
+        </TableBody>
+        </Table>
+    </div>
+  );
+
   return (
     <>
       <Card className="w-full max-w-5xl shadow-lg">
@@ -294,265 +429,13 @@ export default function PaymentTracker() {
                     </Button>
                 </div>
                 <TabsContent value="all" className="mt-0">
-                    <div className="rounded-md border">
-                        <Table>
-                        <TableHeader>
-                            <TableRow>
-                            <TableHead className="w-[200px]">Member Name</TableHead>
-                            <TableHead>Flat No.</TableHead>
-                            <TableHead>Mobile No.</TableHead>
-                            <TableHead>Amount Paid</TableHead>
-                            <TableHead>Payment Date</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead className="text-right">Actions</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {isLoading ? (
-                            Array.from({ length: 5 }).map((_, i) => (
-                                <TableRow key={i}>
-                                <TableCell><Skeleton className="h-5 w-32" /></TableCell>
-                                <TableCell><Skeleton className="h-5 w-16" /></TableCell>
-                                <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-                                <TableCell><Skeleton className="h-5 w-20" /></TableCell>
-                                <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-                                <TableCell><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
-                                <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
-                                </TableRow>
-                            ))
-                            ) : filteredMembers.length > 0 ? (
-                            filteredMembers.map((member) => (
-                                <TableRow key={member.id}>
-                                <TableCell className="font-medium">{member.name}</TableCell>
-                                <TableCell>{member.flatNumber}</TableCell>
-                                <TableCell>{member.mobileNumber}</TableCell>
-                                <TableCell>
-                                    {member.currentMonthPayment ? `₹${member.currentMonthPayment.amount.toFixed(2)}` : "N/A"}
-                                </TableCell>
-                                <TableCell>
-                                    {member.currentMonthPayment
-                                    ? format(new Date(member.currentMonthPayment.date), "PPP")
-                                    : "N/A"}
-                                </TableCell>
-                                <TableCell>
-                                    {member.currentMonthPayment ? (
-                                    <Badge className="bg-accent text-accent-foreground hover:bg-accent/80">
-                                        <CheckCircle2 className="mr-2 h-4 w-4" />
-                                        Paid
-                                    </Badge>
-                                    ) : (
-                                    <Badge variant="destructive">
-                                        <XCircle className="mr-2 h-4 w-4" />
-                                        Unpaid
-                                    </Badge>
-                                    )}
-                                </TableCell>
-                                <TableCell className="text-right">
-                                    <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" className="h-8 w-8 p-0">
-                                        <span className="sr-only">Open menu</span>
-                                        <MoreHorizontal className="h-4 w-4" />
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                        <DropdownMenuItem onClick={() => handleEditMemberClick(member)}>
-                                        <Pencil className="mr-2 h-4 w-4" />
-                                        <span>Edit Member</span>
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => handleRecordPaymentClick(member)}>
-                                        <ReceiptText className="mr-2 h-4 w-4" />
-                                        <span>{member.currentMonthPayment ? "Edit Payment" : "Record Payment"}</span>
-                                        </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                    </DropdownMenu>
-                                </TableCell>
-                                </TableRow>
-                            ))
-                            ) : (
-                            <TableRow>
-                                <TableCell colSpan={7} className="h-24 text-center">
-                                No members found for this filter.
-                                </TableCell>
-                            </TableRow>
-                            )}
-                        </TableBody>
-                        </Table>
-                    </div>
+                    {renderTable(filteredMembers)}
                 </TabsContent>
                 <TabsContent value="paid" className="mt-0">
-                     <div className="rounded-md border">
-                        <Table>
-                        <TableHeader>
-                            <TableRow>
-                            <TableHead className="w-[200px]">Member Name</TableHead>
-                            <TableHead>Flat No.</TableHead>
-                            <TableHead>Mobile No.</TableHead>
-                            <TableHead>Amount Paid</TableHead>
-                            <TableHead>Payment Date</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead className="text-right">Actions</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {isLoading ? (
-                            Array.from({ length: 2 }).map((_, i) => (
-                                <TableRow key={i}>
-                                <TableCell><Skeleton className="h-5 w-32" /></TableCell>
-                                <TableCell><Skeleton className="h-5 w-16" /></TableCell>
-                                <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-                                <TableCell><Skeleton className="h-5 w-20" /></TableCell>
-                                <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-                                <TableCell><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
-                                <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
-                                </TableRow>
-                            ))
-                            ) : filteredMembers.length > 0 ? (
-                            filteredMembers.map((member) => (
-                                <TableRow key={member.id}>
-                                <TableCell className="font-medium">{member.name}</TableCell>
-                                <TableCell>{member.flatNumber}</TableCell>
-                                <TableCell>{member.mobileNumber}</TableCell>
-                                <TableCell>
-                                    {member.currentMonthPayment ? `₹${member.currentMonthPayment.amount.toFixed(2)}` : "N/A"}
-                                </TableCell>
-                                <TableCell>
-                                    {member.currentMonthPayment
-                                    ? format(new Date(member.currentMonthPayment.date), "PPP")
-                                    : "N/A"}
-                                </TableCell>
-                                <TableCell>
-                                    {member.currentMonthPayment ? (
-                                    <Badge className="bg-accent text-accent-foreground hover:bg-accent/80">
-                                        <CheckCircle2 className="mr-2 h-4 w-4" />
-                                        Paid
-                                    </Badge>
-                                    ) : (
-                                    <Badge variant="destructive">
-                                        <XCircle className="mr-2 h-4 w-4" />
-                                        Unpaid
-                                    </Badge>
-                                    )}
-                                </TableCell>
-                                <TableCell className="text-right">
-                                    <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" className="h-8 w-8 p-0">
-                                        <span className="sr-only">Open menu</span>
-                                        <MoreHorizontal className="h-4 w-4" />
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                        <DropdownMenuItem onClick={() => handleEditMemberClick(member)}>
-                                        <Pencil className="mr-2 h-4 w-4" />
-                                        <span>Edit Member</span>
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => handleRecordPaymentClick(member)}>
-                                        <ReceiptText className="mr-2 h-4 w-4" />
-                                        <span>{member.currentMonthPayment ? "Edit Payment" : "Record Payment"}</span>
-                                        </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                    </DropdownMenu>
-                                </TableCell>
-                                </TableRow>
-                            ))
-                            ) : (
-                            <TableRow>
-                                <TableCell colSpan={7} className="h-24 text-center">
-                                  No members have paid yet for this month.
-                                </TableCell>
-                            </TableRow>
-                            )}
-                        </TableBody>
-                        </Table>
-                    </div>
+                    {renderTable(filteredMembers)}
                 </TabsContent>
                 <TabsContent value="unpaid" className="mt-0">
-                     <div className="rounded-md border">
-                        <Table>
-                        <TableHeader>
-                            <TableRow>
-                            <TableHead className="w-[200px]">Member Name</TableHead>
-                            <TableHead>Flat No.</TableHead>
-                            <TableHead>Mobile No.</TableHead>
-                            <TableHead>Amount Paid</TableHead>
-                            <TableHead>Payment Date</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead className="text-right">Actions</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {isLoading ? (
-                            Array.from({ length: 3 }).map((_, i) => (
-                                <TableRow key={i}>
-                                <TableCell><Skeleton className="h-5 w-32" /></TableCell>
-                                <TableCell><Skeleton className="h-5 w-16" /></TableCell>
-                                <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-                                <TableCell><Skeleton className="h-5 w-20" /></TableCell>
-                                <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-                                <TableCell><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
-                                <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
-                                </TableRow>
-                            ))
-                            ) : filteredMembers.length > 0 ? (
-                            filteredMembers.map((member) => (
-                                <TableRow key={member.id}>
-                                <TableCell className="font-medium">{member.name}</TableCell>
-                                <TableCell>{member.flatNumber}</TableCell>
-                                <TableCell>{member.mobileNumber}</TableCell>
-                                <TableCell>
-                                    {member.currentMonthPayment ? `₹${member.currentMonthPayment.amount.toFixed(2)}` : "N/A"}
-                                </TableCell>
-                                <TableCell>
-                                    {member.currentMonthPayment
-                                    ? format(new Date(member.currentMonthPayment.date), "PPP")
-                                    : "N/A"}
-                                </TableCell>
-                                <TableCell>
-                                    {member.currentMonthPayment ? (
-                                    <Badge className="bg-accent text-accent-foreground hover:bg-accent/80">
-                                        <CheckCircle2 className="mr-2 h-4 w-4" />
-                                        Paid
-                                    </Badge>
-                                    ) : (
-                                    <Badge variant="destructive">
-                                        <XCircle className="mr-2 h-4 w-4" />
-                                        Unpaid
-                                    </Badge>
-                                    )}
-                                </TableCell>
-                                <TableCell className="text-right">
-                                    <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" className="h-8 w-8 p-0">
-                                        <span className="sr-only">Open menu</span>
-                                        <MoreHorizontal className="h-4 w-4" />
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                        <DropdownMenuItem onClick={() => handleEditMemberClick(member)}>
-                                        <Pencil className="mr-2 h-4 w-4" />
-                                        <span>Edit Member</span>
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => handleRecordPaymentClick(member)}>
-                                        <ReceiptText className="mr-2 h-4 w-4" />
-                                        <span>{member.currentMonthPayment ? "Edit Payment" : "Record Payment"}</span>
-                                        </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                    </DropdownMenu>
-                                </TableCell>
-                                </TableRow>
-                            ))
-                            ) : (
-                            <TableRow>
-                                <TableCell colSpan={7} className="h-24 text-center">
-                                  All members have paid for this month.
-                                </TableCell>
-                            </TableRow>
-                            )}
-                        </TableBody>
-                        </Table>
-                    </div>
+                    {renderTable(filteredMembers)}
                 </TabsContent>
             </Tabs>
         </CardContent>
@@ -713,3 +596,5 @@ export default function PaymentTracker() {
     </>
   );
 }
+
+    
