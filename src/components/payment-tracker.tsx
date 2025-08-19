@@ -71,7 +71,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import type { Member, Payment } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
-import { addMember, addPayment, deleteMember, getMembers, getPayments, updateMember, updatePayment } from "@/services/firestore";
+import { addMember, addPayment, deleteMember, getMembers, getPayments, getPaymentsForYear, updateMember, updatePayment } from "@/services/firestore";
 
 const paymentSchema = z.object({
   amount: z.coerce
@@ -243,10 +243,16 @@ export default function PaymentTracker() {
                     description: `Payment for ${selectedMember.name} has been updated.`,
                 });
             } else {
+                 const paymentYear = getYear(values.date);
+                 const paymentsInYear = await getPaymentsForYear(paymentYear);
+                 const nextReceiptNumber = paymentsInYear.length + 1;
+                 const receiptNumber = `${nextReceiptNumber}/${paymentYear}`;
+
                  const paymentData = {
                     memberId: selectedMember.id,
                     amount: values.amount,
                     date: values.date.toISOString(),
+                    receiptNumber: receiptNumber,
                 };
                 const newPayment = await addPayment(paymentData);
                 setPayments(prev => [...prev, newPayment]);

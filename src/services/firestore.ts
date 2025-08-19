@@ -95,3 +95,15 @@ export async function deleteExpense(id: string): Promise<void> {
     const expenseDoc = doc(db, 'expenses', id);
     await deleteDoc(expenseDoc);
 }
+
+export async function getPaymentsForYear(year: number): Promise<Payment[]> {
+    const paymentsCol = collection(db, 'payments');
+    const startDate = new Date(year, 0, 1).toISOString();
+    const endDate = new Date(year, 11, 31, 23, 59, 59, 999).toISOString();
+    
+    const q = query(paymentsCol, where('date', '>=', startDate), where('date', '<=', endDate));
+    
+    const paymentSnapshot = await getDocs(q);
+    const paymentList = paymentSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Payment));
+    return paymentList;
+}

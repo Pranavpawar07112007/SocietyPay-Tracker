@@ -206,7 +206,7 @@ export default function ReceiptPage() {
                             <div className="flex justify-between items-center text-sm">
                                 <div className="space-y-1">
                                     <p className="font-semibold text-muted-foreground">Receipt No.</p>
-                                    <p className="font-mono">{payment.id.slice(0, 8).toUpperCase()}</p>
+                                    <p className="font-mono">{payment.receiptNumber || payment.id.slice(0, 8).toUpperCase()}</p>
                                 </div>
                                 <div className="space-y-1 text-right">
                                     <p className="font-semibold text-muted-foreground">Payment Date</p>

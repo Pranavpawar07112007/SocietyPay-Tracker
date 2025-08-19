@@ -10,6 +10,7 @@ export interface Payment {
   memberId: string;
   amount: number;
   date: string; // Stored as ISO string
+  receiptNumber?: string;
 }
 
 export interface Expense {
