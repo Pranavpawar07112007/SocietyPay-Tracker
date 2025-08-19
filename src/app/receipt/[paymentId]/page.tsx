@@ -17,7 +17,7 @@ import { useAuth } from '@/hooks/use-auth';
 export default function ReceiptPage() {
   const { toast } = useToast();
   const params = useParams();
-  const paymentId = params.paymentId as string;
+  const paymentId = params ? (params.paymentId as string) : '';
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
 
