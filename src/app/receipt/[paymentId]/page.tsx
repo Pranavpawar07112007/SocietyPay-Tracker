@@ -5,7 +5,7 @@ import * as React from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { format } from 'date-fns';
-import { Printer, ArrowLeft, Loader2, AlertCircle } from 'lucide-react';
+import { Printer, ArrowLeft, Loader2, AlertCircle, FileDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -13,6 +13,8 @@ import type { Member, Payment } from '@/types';
 import { getPaymentById, getMemberById } from '@/services/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 export default function ReceiptPage() {
   const { toast } = useToast();
@@ -25,6 +27,7 @@ export default function ReceiptPage() {
   const [member, setMember] = React.useState<Member | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+  const receiptRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
     if (!authLoading && !user) {
@@ -69,6 +72,52 @@ export default function ReceiptPage() {
     window.print();
   };
 
+  const handleDownloadPdf = async () => {
+    const receiptElement = receiptRef.current;
+    if (!receiptElement || !payment || !member) return;
+
+    // Temporarily remove box-shadow for PDF generation to avoid visual artifacts
+    const originalShadow = receiptElement.style.boxShadow;
+    receiptElement.style.boxShadow = 'none';
+
+    const canvas = await html2canvas(receiptElement, {
+      scale: 2, // Increase scale for better quality
+      logging: false,
+      useCORS: true,
+    });
+    
+    // Restore original styles
+    receiptElement.style.boxShadow = originalShadow;
+
+    const imgData = canvas.toDataURL('image/png');
+    
+    // A4 size in points: 595.28 x 841.89
+    const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'pt',
+        format: 'a4'
+    });
+
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = pdf.internal.pageSize.getHeight();
+    const canvasWidth = canvas.width;
+    const canvasHeight = canvas.height;
+    const canvasAspectRatio = canvasWidth / canvasHeight;
+    const pdfAspectRatio = pdfWidth / pdfHeight;
+
+    let finalWidth, finalHeight;
+    // Fit canvas to width of PDF
+    finalWidth = pdfWidth;
+    finalHeight = finalWidth / canvasAspectRatio;
+
+    // Center the image on the page
+    const x = 0;
+    const y = (pdfHeight - finalHeight) / 2;
+
+    pdf.addImage(imgData, 'PNG', x, y, finalWidth, finalHeight);
+    pdf.save(`receipt-${member.name.replace(/\s+/g, '-')}-${payment.id.slice(0, 6)}.pdf`);
+  };
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
@@ -111,13 +160,19 @@ export default function ReceiptPage() {
                         Back to History
                     </Link>
                 </Button>
-                <Button onClick={handlePrint} disabled={isLoading || !!error}>
-                    <Printer className="mr-2 h-4 w-4" />
-                    Print Receipt
-                </Button>
+                <div className="flex gap-2">
+                    <Button onClick={handleDownloadPdf} variant="outline" disabled={isLoading || !!error}>
+                        <FileDown className="mr-2 h-4 w-4" />
+                        Download PDF
+                    </Button>
+                    <Button onClick={handlePrint} disabled={isLoading || !!error}>
+                        <Printer className="mr-2 h-4 w-4" />
+                        Print Receipt
+                    </Button>
+                </div>
             </div>
 
-            <Card className="w-full card-print">
+            <Card className="w-full card-print" ref={receiptRef}>
                 <CardHeader className="border-b border-border text-center">
                     <div className="flex justify-center items-center gap-2">
                         <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2Z"/></svg>
