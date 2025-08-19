@@ -2,10 +2,11 @@
 'use client';
 
 import * as React from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
 
 const GoogleIcon = () => (
@@ -17,7 +18,7 @@ const GoogleIcon = () => (
     </svg>
 );
 
-export default function LoginPage() {
+export default function SignInPage() {
     const { user, signInWithGoogle, loading } = useAuth();
     const router = useRouter();
 
@@ -56,6 +57,9 @@ export default function LoginPage() {
                         Sign In with Google
                     </Button>
                 </CardContent>
+                 <CardFooter className="flex justify-center text-sm">
+                    <p>Don't have an account? <Link href="/sign-up" className="font-semibold text-primary hover:underline">Sign Up</Link></p>
+                </CardFooter>
             </Card>
         </main>
     );

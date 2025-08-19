@@ -16,7 +16,7 @@ export default function Home() {
 
     React.useEffect(() => {
         if (!loading && !user) {
-            router.push('/login');
+            router.push('/sign-in');
         }
     }, [user, loading, router]);
 

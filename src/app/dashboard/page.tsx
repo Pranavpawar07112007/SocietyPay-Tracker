@@ -23,7 +23,7 @@ export default function DashboardPage() {
 
   React.useEffect(() => {
     if (!loading && !user) {
-      router.push('/login');
+      router.push('/sign-in');
     }
   }, [user, loading, router]);
 

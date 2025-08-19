@@ -28,7 +28,7 @@ export default function ReceiptPage() {
 
   React.useEffect(() => {
     if (!authLoading && !user) {
-      router.push('/login');
+      router.push('/sign-in');
     }
   }, [user, authLoading, router]);
 
