@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Home, LayoutDashboard } from 'lucide-react';
+import { Home } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -9,9 +9,9 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import PaymentHistory from '@/components/payment-history';
+import Dashboard from '@/components/dashboard';
 
-export default function HistoryPage() {
+export default function DashboardPage() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-start p-4 sm:p-8 md:p-12 lg:p-24 bg-background">
       <Card className="w-full max-w-7xl shadow-lg">
@@ -19,18 +19,17 @@ export default function HistoryPage() {
           <div className="flex justify-between items-start">
             <div>
               <CardTitle className="font-headline text-3xl">
-                Payment History
+                Society Dashboard
               </CardTitle>
               <CardDescription>
-                View all past maintenance payment records.
+                An overview of your society's finances.
               </CardDescription>
             </div>
             <div className="flex gap-2">
                 <Button asChild variant="outline">
-                    <Link href="/dashboard">
-                        <LayoutDashboard className="mr-2 h-4 w-4" />
-                        Dashboard
-                    </Link>
+                <Link href="/history">
+                    View Payment History
+                </Link>
                 </Button>
                 <Button asChild variant="outline">
                 <Link href="/">
@@ -42,7 +41,7 @@ export default function HistoryPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <PaymentHistory />
+          <Dashboard />
         </CardContent>
       </Card>
     </main>

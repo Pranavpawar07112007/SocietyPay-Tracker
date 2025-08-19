@@ -11,3 +11,10 @@ export interface Payment {
   amount: number;
   date: string; // Stored as ISO string
 }
+
+export interface Expense {
+    id: string;
+    description: string;
+    amount: number;
+    date: string; // Stored as ISO string
+}
