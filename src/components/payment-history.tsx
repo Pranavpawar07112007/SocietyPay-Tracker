@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from 'react';
@@ -42,7 +43,6 @@ import {
 } from "@/components/ui/select"
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useAuth } from '@/context/auth-context';
 import { db } from '@/lib/firebase';
 
 type PaymentWithMember = Payment & { member: Member | undefined };
@@ -50,10 +50,11 @@ type SortKey = keyof PaymentWithMember | 'member.name' | 'member.flatNumber';
 
 const ALL_MONTHS = "all-months";
 const ALL_YEARS = "all-years";
+const USER_ID = "defaultUser"; // Static user ID
+
 
 export default function PaymentHistory() {
   const { toast } = useToast();
-  const { user } = useAuth();
   const [members, setMembers] = useState<Member[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -64,11 +65,10 @@ export default function PaymentHistory() {
   const [selectedYear, setSelectedYear] = useState<string>(ALL_YEARS);
 
   useEffect(() => {
-    if (!user) return;
     setIsLoading(true);
 
-    const membersCollection = collection(db, "users", user.uid, "members");
-    const paymentsCollection = collection(db, "users", user.uid, "payments");
+    const membersCollection = collection(db, "users", USER_ID, "members");
+    const paymentsCollection = collection(db, "users", USER_ID, "payments");
     
     const unsubMembers = onSnapshot(membersCollection, (snapshot) => {
         const membersList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Member));
@@ -86,13 +86,13 @@ export default function PaymentHistory() {
         unsubMembers();
         unsubPayments();
     };
-}, [user]);
+}, []);
 
   const handleDeletePayment = async () => {
-    if (!paymentToDelete || !user) return;
+    if (!paymentToDelete) return;
 
     try {
-        await deleteDoc(doc(db, "users", user.uid, "payments", paymentToDelete.id));
+        await deleteDoc(doc(db, "users", USER_ID, "payments", paymentToDelete.id));
         toast({
           title: 'Payment Deleted',
           description: 'The payment record has been successfully deleted.',

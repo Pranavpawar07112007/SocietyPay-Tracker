@@ -71,7 +71,6 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { useAuth } from '@/context/auth-context';
 import { db } from '@/lib/firebase';
 
 const expenseSchema = z.object({
@@ -84,9 +83,10 @@ const expenseSchema = z.object({
   }),
 });
 
+const USER_ID = "defaultUser"; // Static user ID
+
 export default function Dashboard() {
   const { toast } = useToast();
-  const { user } = useAuth();
   const [payments, setPayments] = useState<Payment[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -99,11 +99,10 @@ export default function Dashboard() {
   });
 
   useEffect(() => {
-    if (!user) return;
     setIsLoading(true);
 
-    const paymentsCollection = collection(db, "users", user.uid, "payments");
-    const expensesCollection = collection(db, "users", user.uid, "expenses");
+    const paymentsCollection = collection(db, "users", USER_ID, "payments");
+    const expensesCollection = collection(db, "users", USER_ID, "expenses");
     
     const unsubPayments = onSnapshot(paymentsCollection, (snapshot) => {
         const paymentsList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Payment));
@@ -121,7 +120,7 @@ export default function Dashboard() {
         unsubPayments();
         unsubExpenses();
     };
-}, [user]);
+}, []);
 
   useEffect(() => {
     if (isExpenseDialogOpen) {
@@ -161,9 +160,9 @@ export default function Dashboard() {
   };
   
   const handleDeleteExpense = async () => {
-    if (!expenseToDelete || !user) return;
+    if (!expenseToDelete) return;
     try {
-        await deleteDoc(doc(db, "users", user.uid, "expenses", expenseToDelete.id));
+        await deleteDoc(doc(db, "users", USER_ID, "expenses", expenseToDelete.id));
         toast({
             title: 'Expense Deleted',
             description: 'The expense record has been successfully deleted.',
@@ -180,16 +179,15 @@ export default function Dashboard() {
   };
 
   const onExpenseSubmit = async (values: z.infer<typeof expenseSchema>) => {
-    if (!user) return;
     const expenseData = { ...values, date: values.date.toISOString() };
 
     try {
         if (editingExpense) {
-            const expenseDocRef = doc(db, "users", user.uid, "expenses", editingExpense.id);
+            const expenseDocRef = doc(db, "users", USER_ID, "expenses", editingExpense.id);
             await updateDoc(expenseDocRef, expenseData);
             toast({ title: 'Expense Updated' });
         } else {
-            const expensesCollection = collection(db, "users", user.uid, "expenses");
+            const expensesCollection = collection(db, "users", USER_ID, "expenses");
             await addDoc(expensesCollection, expenseData);
             toast({ title: 'Expense Added' });
         }

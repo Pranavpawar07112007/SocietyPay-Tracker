@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -7,7 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { format, getMonth, getYear, isSameMonth } from "date-fns";
-import { CalendarIcon, CheckCircle2, XCircle, ReceiptText, MoreHorizontal, Pencil, UserPlus, Trash2, MessageSquare, LogOut } from "lucide-react";
+import { CalendarIcon, CheckCircle2, XCircle, ReceiptText, MoreHorizontal, Pencil, UserPlus, Trash2, MessageSquare } from "lucide-react";
 import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, query, where, getDocs, writeBatch } from "firebase/firestore";
 
 
@@ -73,8 +72,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import type { Member, Payment } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useAuth } from "@/context/auth-context";
-import { db, getFirebaseAuth } from "@/lib/firebase";
+import { db } from "@/lib/firebase";
 
 const paymentSchema = z.object({
   amount: z.coerce
@@ -93,9 +91,10 @@ const memberSchema = z.object({
 
 type MemberWithPayment = Member & { currentMonthPayment: Payment | null };
 
+const USER_ID = "defaultUser"; // Static user ID
+
 export default function PaymentTracker() {
   const { toast } = useToast();
-  const { user } = useAuth();
   const [members, setMembers] = useState<Member[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -121,11 +120,10 @@ export default function PaymentTracker() {
   });
 
   useEffect(() => {
-    if (!user) return;
     setIsLoading(true);
 
-    const membersCollection = collection(db, "users", user.uid, "members");
-    const paymentsCollection = collection(db, "users", user.uid, "payments");
+    const membersCollection = collection(db, "users", USER_ID, "members");
+    const paymentsCollection = collection(db, "users", USER_ID, "payments");
 
     const unsubMembers = onSnapshot(membersCollection, (snapshot) => {
         const membersList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Member));
@@ -142,7 +140,7 @@ export default function PaymentTracker() {
         unsubMembers();
         unsubPayments();
     };
-}, [user]);
+}, []);
 
   
   const membersWithPayments = useMemo(() => {
@@ -202,17 +200,17 @@ export default function PaymentTracker() {
   };
 
   const handleDeleteMember = async () => {
-    if (!memberToDelete || !user) return;
+    if (!memberToDelete) return;
 
     try {
         const batch = writeBatch(db);
 
         // Delete the member document
-        const memberDocRef = doc(db, "users", user.uid, "members", memberToDelete.id);
+        const memberDocRef = doc(db, "users", USER_ID, "members", memberToDelete.id);
         batch.delete(memberDocRef);
 
         // Find and delete all payments for that member
-        const paymentsQuery = query(collection(db, "users", user.uid, "payments"), where("memberId", "==", memberToDelete.id));
+        const paymentsQuery = query(collection(db, "users", USER_ID, "payments"), where("memberId", "==", memberToDelete.id));
         const paymentsSnapshot = await getDocs(paymentsQuery);
         paymentsSnapshot.forEach(doc => {
             batch.delete(doc.ref);
@@ -243,7 +241,7 @@ export default function PaymentTracker() {
   }
 
   const onPaymentSubmit = async (values: z.infer<typeof paymentSchema>) => {
-    if (!selectedMember || !user) return;
+    if (!selectedMember) return;
 
     const paymentData = {
         memberId: selectedMember.id,
@@ -253,14 +251,14 @@ export default function PaymentTracker() {
 
     try {
         if (editingPayment) {
-            const paymentDocRef = doc(db, "users", user.uid, "payments", editingPayment.id);
+            const paymentDocRef = doc(db, "users", USER_ID, "payments", editingPayment.id);
             await updateDoc(paymentDocRef, paymentData);
             toast({
                 title: "Payment Updated",
                 description: `Payment for ${selectedMember.name} has been updated.`,
             });
         } else {
-            const paymentsCollection = collection(db, "users", user.uid, "payments");
+            const paymentsCollection = collection(db, "users", USER_ID, "payments");
             await addDoc(paymentsCollection, paymentData);
             toast({
                 title: "Payment Recorded",
@@ -282,19 +280,18 @@ export default function PaymentTracker() {
   };
 
   const onMemberSubmit = async (values: z.infer<typeof memberSchema>) => {
-    if (!user) return;
-    const memberData = { ...values, userId: user.uid };
+    const memberData = { ...values };
 
     try {
         if (selectedMember) {
-            const memberDocRef = doc(db, "users", user.uid, "members", selectedMember.id);
+            const memberDocRef = doc(db, "users", USER_ID, "members", selectedMember.id);
             await updateDoc(memberDocRef, values);
             toast({
                 title: "Member Updated",
                 description: `Details for ${values.name} have been updated.`,
             });
         } else {
-            const membersCollection = collection(db, "users", user.uid, "members");
+            const membersCollection = collection(db, "users", USER_ID, "members");
             await addDoc(membersCollection, values);
             toast({
                 title: "Member Added",
@@ -457,12 +454,6 @@ export default function PaymentTracker() {
               </div>
             </div>
             <div className="text-right flex flex-col items-end gap-2">
-                <div className="flex items-center">
-                    <p className="text-sm text-muted-foreground mr-4">Logged in as {user?.email}</p>
-                    <Button variant="ghost" size="icon" onClick={() => getFirebaseAuth().signOut()}>
-                        <LogOut className="h-5 w-5" />
-                    </Button>
-                </div>
                 <div>
                     <p className="text-lg font-semibold text-muted-foreground">{format(new Date(), 'MMMM')}</p>
                     <p className="text-sm text-muted-foreground">{format(new Date(), 'yyyy')}</p>
