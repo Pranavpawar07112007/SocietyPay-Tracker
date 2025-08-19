@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useState, useEffect, useMemo } from 'react';
-import { format } from 'date-fns';
+import { getMonth, getYear, format } from 'date-fns';
 import { ArrowUpDown, Trash2, Search, MoreHorizontal } from 'lucide-react';
 
 import type { Member, Payment } from '@/types';
@@ -32,12 +32,22 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 
 
 type PaymentWithMember = Payment & { member: Member | undefined };
 type SortKey = keyof PaymentWithMember | 'member.name' | 'member.flatNumber';
+
+const ALL_MONTHS = "all-months";
+const ALL_YEARS = "all-years";
 
 export default function PaymentHistory() {
   const { toast } = useToast();
@@ -47,7 +57,8 @@ export default function PaymentHistory() {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: 'ascending' | 'descending' } | null>(null);
   const [paymentToDelete, setPaymentToDelete] = useState<Payment | null>(null);
-
+  const [selectedMonth, setSelectedMonth] = useState<string>(ALL_MONTHS);
+  const [selectedYear, setSelectedYear] = useState<string>(ALL_YEARS);
 
   useEffect(() => {
     try {
@@ -99,6 +110,11 @@ export default function PaymentHistory() {
     }
     return sortConfig.direction === 'ascending' ? '▲' : '▼';
   };
+  
+  const availableYears = useMemo(() => {
+    const years = new Set(payments.map(p => getYear(new Date(p.date)).toString()));
+    return Array.from(years).sort((a,b) => parseInt(b) - parseInt(a));
+  }, [payments]);
 
   const sortedAndFilteredPayments = useMemo(() => {
     let sortableItems = [...paymentsWithMemberData];
@@ -112,12 +128,23 @@ export default function PaymentHistory() {
         });
     }
 
+    if (selectedMonth !== ALL_MONTHS) {
+        sortableItems = sortableItems.filter(item => getMonth(new Date(item.date)) === parseInt(selectedMonth));
+    }
+
+    if (selectedYear !== ALL_YEARS) {
+        sortableItems = sortableItems.filter(item => getYear(new Date(item.date)) === parseInt(selectedYear));
+    }
+
     if (sortConfig !== null) {
       sortableItems.sort((a, b) => {
         const getNestedValue = (obj: any, path: string) => path.split('.').reduce((o, k) => (o || {})[k], obj);
 
         const aValue = sortConfig.key.includes('.') ? getNestedValue(a, sortConfig.key) : a[sortConfig.key as keyof PaymentWithMember];
         const bValue = sortConfig.key.includes('.') ? getNestedValue(b, sortConfig.key) : b[sortConfig.key as keyof PaymentWithMember];
+        
+        if (aValue === undefined || aValue === null) return 1;
+        if (bValue === undefined || bValue === null) return -1;
 
         if (aValue < bValue) {
           return sortConfig.direction === 'ascending' ? -1 : 1;
@@ -127,22 +154,50 @@ export default function PaymentHistory() {
         }
         return 0;
       });
+    } else {
+        sortableItems.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     }
 
-    return sortableItems.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [paymentsWithMemberData, searchTerm, sortConfig]);
+    return sortableItems;
+  }, [paymentsWithMemberData, searchTerm, sortConfig, selectedMonth, selectedYear]);
 
   return (
     <div className="space-y-4">
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-        <Input
-          placeholder="Search by name, flat, or amount..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-10"
-        />
-      </div>
+        <div className="flex flex-col sm:flex-row gap-4">
+            <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                <Input
+                placeholder="Search by name, flat, or amount..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+                />
+            </div>
+            <div className="flex gap-4">
+                <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                    <SelectTrigger className="w-full sm:w-[180px]">
+                        <SelectValue placeholder="Select Month" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value={ALL_MONTHS}>All Months</SelectItem>
+                        {Array.from({length: 12}, (_, i) => (
+                            <SelectItem key={i} value={i.toString()}>{format(new Date(0, i), 'MMMM')}</SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+                <Select value={selectedYear} onValueChange={setSelectedYear}>
+                    <SelectTrigger className="w-full sm:w-[120px]">
+                        <SelectValue placeholder="Select Year" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value={ALL_YEARS}>All Years</SelectItem>
+                        {availableYears.map(year => (
+                            <SelectItem key={year} value={year}>{year}</SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            </div>
+        </div>
       <div className="rounded-md border">
         <Table>
           <TableHeader>
