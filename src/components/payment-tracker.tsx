@@ -77,13 +77,22 @@ import { useAuth } from "@/hooks/use-auth";
 const paymentSchema = z.object({
   amount: z.coerce
     .number({ invalid_type_error: "Please enter a valid amount." })
-    .positive({ message: "Amount must be greater than 0." }),
+    .nonnegative({ message: "Amount cannot be negative." }),
   date: z.string().refine((val) => !isNaN(Date.parse(val)), {
     message: "Please enter a valid date in YYYY-MM-DD format.",
   }),
   paymentMode: z.literal('Online').default('Online'),
-  transactionId: z.string().min(1, "Transaction ID is required for online payments."),
+  transactionId: z.string().optional(),
+}).superRefine((data, ctx) => {
+    if (data.amount > 0 && (!data.transactionId || data.transactionId.trim() === '')) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['transactionId'],
+            message: 'Transaction ID is required for payments greater than 0.',
+        });
+    }
 });
+
 
 const memberSchema = z.object({
   name: z.string().min(1, "Name is required."),
