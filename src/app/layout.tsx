@@ -27,7 +27,6 @@ export default function RootLayout({
             attribute="class"
             defaultTheme="system"
             enableSystem
-            disableTransitionOnChange
            >
             <AuthProvider>
                 <main className="animate-fade-in">
