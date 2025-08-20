@@ -71,14 +71,14 @@
 
 @layer utilities {
     .glass-card {
-        @apply bg-card/60 backdrop-blur-lg border border-white/10 shadow-lg animate-fade-in-up;
+        @apply bg-card/60 backdrop-blur-xl border border-white/10 shadow-lg animate-fade-in-up;
     }
     .dark .glass-card {
         background-color: rgba(20, 25, 30, 0.6);
     }
     
     .glass-effect {
-      @apply backdrop-blur-[10px] border border-solid border-white/20;
+      @apply backdrop-blur-xl border border-solid border-white/20;
     }
     .glass-effect {
         background-color: rgba(255, 255, 255, 0.1);
@@ -150,4 +150,5 @@
     border: 1px solid #e2e8f0;
   }
 }
+
 
