@@ -76,6 +76,45 @@
     .dark .glass-card {
         background-color: rgba(20, 25, 30, 0.6);
     }
+    
+    .glass-effect {
+      @apply backdrop-blur-[10px] border border-solid border-white/20;
+    }
+    .glass-effect {
+        background-color: rgba(255, 255, 255, 0.1);
+    }
+    .dark .glass-effect {
+        background-color: rgba(0, 0, 0, 0.2);
+    }
+
+    .glass-effect.bg-primary {
+        background-color: hsla(var(--primary) / 0.2);
+    }
+    .dark .glass-effect.bg-primary {
+        background-color: hsla(var(--primary) / 0.3);
+    }
+    
+    .glass-effect.bg-destructive {
+        background-color: hsla(var(--destructive) / 0.2);
+    }
+    .dark .glass-effect.bg-destructive {
+        background-color: hsla(var(--destructive) / 0.3);
+    }
+
+    .glass-effect.bg-popover {
+        background-color: hsla(var(--popover) / 0.6);
+    }
+    .dark .glass-effect.bg-popover {
+        background-color: hsla(var(--popover) / 0.7);
+    }
+
+    .glass-effect.bg-background {
+        background-color: hsla(var(--background) / 0.6);
+    }
+    .dark .glass-effect.bg-background {
+        background-color: hsla(var(--background) / 0.7);
+    }
+
 }
 
 
