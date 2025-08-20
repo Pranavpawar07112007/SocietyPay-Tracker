@@ -15,6 +15,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import SplashScreen from '@/components/splash-screen';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email.' }),
@@ -63,11 +64,7 @@ export default function SignInPage() {
     };
 
     if (loading) {
-        return (
-            <div className="flex min-h-screen items-center justify-center bg-background">
-                <Loader2 className="h-12 w-12 animate-spin text-primary" />
-            </div>
-        );
+        return <SplashScreen />;
     }
     
     if (user) {

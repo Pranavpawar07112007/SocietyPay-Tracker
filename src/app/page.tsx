@@ -10,6 +10,7 @@ import PaymentTracker from '@/components/payment-tracker';
 import { History, LayoutDashboard, LogOut, Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { ThemeToggle } from '@/components/theme-toggle';
+import SplashScreen from '@/components/splash-screen';
 
 export default function Home() {
     const { user, signOut, loading } = useAuth();
@@ -22,11 +23,7 @@ export default function Home() {
     }, [user, loading, router]);
 
     if (loading || !user) {
-        return (
-            <div className="flex min-h-screen items-center justify-center bg-background">
-                <Loader2 className="h-12 w-12 animate-spin text-primary" />
-            </div>
-        );
+        return <SplashScreen />;
     }
 
   return (

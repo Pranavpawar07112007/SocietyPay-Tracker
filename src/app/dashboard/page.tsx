@@ -17,6 +17,7 @@ import {
 import Dashboard from '@/components/dashboard';
 import { useAuth } from '@/hooks/use-auth';
 import { ThemeToggle } from '@/components/theme-toggle';
+import SplashScreen from '@/components/splash-screen';
 
 export default function DashboardPage() {
   const { user, loading } = useAuth();
@@ -33,11 +34,7 @@ export default function DashboardPage() {
   };
 
   if (loading || !user) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
-      </div>
-    );
+    return <SplashScreen />;
   }
 
   return (
