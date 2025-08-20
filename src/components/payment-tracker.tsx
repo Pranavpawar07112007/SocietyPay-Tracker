@@ -657,8 +657,7 @@ export default function PaymentTracker() {
               </div>
 
               <DialogFooter>
-                <Button type="button" variant="ghost" onClick={() => setIsMemberDialogOpen(false)} disabled={isPending}>Cancel</Button>
-                <Button type="submit" disabled={isPending}>{selectedMember ? 'Save Changes' : 'Add Member'}</Button>
+                <Button type="button" variant="ghost" onClick={() => setIsMemberDialogOpen(false)} disabled={isPending}>{selectedMember ? 'Save Changes' : 'Add Member'}</Button>
               </DialogFooter>
             </form>
           </Form>
