@@ -7,7 +7,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { format, getYear, getMonth } from 'date-fns';
-import { IndianRupee, Trash2, CalendarIcon, PlusCircle, ArrowUpCircle, ArrowDownCircle, AlertCircle } from 'lucide-react';
+import { IndianRupee, Trash2, CalendarIcon, PlusCircle, ArrowUpCircle, ArrowDownCircle, AlertCircle, Banknote } from 'lucide-react';
 
 import { getPayments } from '@/services/firestore';
 import { addExpense, getExpenses, deleteExpense } from '@/services/firestore';
@@ -73,7 +73,7 @@ const expenseSchema = z.object({
 const ALL_MONTHS = "all-months";
 const ALL_YEARS = "all-years";
 
-const HISTORICAL_NET_BALANCE = 67689.94;
+const OPENING_BALANCE = 51477.64;
 
 export default function Dashboard() {
   const { toast } = useToast();
@@ -155,23 +155,22 @@ export default function Dashboard() {
 
   }, [payments, expenses, selectedMonth, selectedYear]);
 
-  const { totalCollected, totalExpenses, netBalance } = useMemo(() => {
-    const isAllTime = selectedMonth === ALL_MONTHS && selectedYear === ALL_YEARS;
+  const { totalCollected, totalExpenses, netBalance, openingBalance } = useMemo(() => {
     const totalExpensesInFilter = filteredData.filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
-
+    const totalCollectedInFilter = filteredData.filteredPayments.reduce((sum, p) => sum + p.amount, 0);
+    
+    const isAllTime = selectedMonth === ALL_MONTHS && selectedYear === ALL_YEARS;
+    
+    let openingBalance = 0;
     if (isAllTime) {
-        // For the all-time view, the net balance is fixed to the historical value.
-        const allTimeExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
-        const netBalance = HISTORICAL_NET_BALANCE;
-        const totalCollected = netBalance + allTimeExpenses;
-        return { totalCollected, totalExpenses: allTimeExpenses, netBalance };
-    } else {
-        // For specific date ranges, calculate as usual.
-        const totalCollected = filteredData.filteredPayments.reduce((sum, p) => sum + p.amount, 0);
-        const netBalance = totalCollected - totalExpensesInFilter;
-        return { totalCollected, totalExpenses: totalExpensesInFilter, netBalance };
+      openingBalance = OPENING_BALANCE;
     }
-  }, [filteredData, expenses, selectedMonth, selectedYear]);
+
+    const totalCollected = totalCollectedInFilter + openingBalance;
+    const netBalance = totalCollected - totalExpensesInFilter;
+
+    return { totalCollected, totalExpenses: totalExpensesInFilter, netBalance, openingBalance };
+  }, [filteredData, selectedMonth, selectedYear]);
   
   const sortedExpenses = useMemo(() => {
     return [...filteredData.filteredExpenses].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -273,7 +272,20 @@ export default function Dashboard() {
             </Select>
         </div>
       </div>
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {openingBalance > 0 && (
+             <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">
+                    Opening Balance
+                    </CardTitle>
+                    <Banknote className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                    {isLoading ? <Skeleton className="h-8 w-3/4" /> : <div className="text-2xl font-bold">{formatCurrency(openingBalance)}</div>}
+                </CardContent>
+            </Card>
+        )}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
@@ -283,6 +295,9 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             {isLoading ? <Skeleton className="h-8 w-3/4" /> : <div className="text-2xl font-bold">{formatCurrency(totalCollected)}</div>}
+             <p className="text-xs text-muted-foreground">
+                {openingBalance > 0 ? '(Including Opening Balance)' : ''}
+            </p>
           </CardContent>
         </Card>
         <Card>
