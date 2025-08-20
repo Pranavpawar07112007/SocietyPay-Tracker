@@ -30,8 +30,8 @@ export default function Home() {
     }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-start p-4 sm:p-8 md:p-12 lg:p-24 bg-background">
-      <div className="w-full max-w-5xl mb-4 flex justify-end items-center gap-2">
+    <main className="flex min-h-screen flex-col items-center justify-start p-2 sm:p-4 md:p-8 lg:p-12 bg-background">
+      <div className="w-full max-w-5xl mb-4 flex flex-col sm:flex-row justify-end items-stretch sm:items-center gap-2">
         <ThemeToggle />
         <Button asChild>
           <Link href="/dashboard">

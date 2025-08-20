@@ -195,7 +195,7 @@ export default function PaymentHistory() {
                 className="pl-10"
                 />
             </div>
-            <div className="flex gap-4">
+            <div className="flex flex-col sm:flex-row gap-4">
                 <Select value={selectedMonth} onValueChange={setSelectedMonth}>
                     <SelectTrigger className="w-full sm:w-[180px]">
                         <SelectValue placeholder="Select Month" />
@@ -220,7 +220,7 @@ export default function PaymentHistory() {
                 </Select>
             </div>
         </div>
-      <div className="rounded-md border">
+      <div className="rounded-md border overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
@@ -261,7 +261,7 @@ export default function PaymentHistory() {
             ) : sortedAndFilteredPayments.length > 0 ? (
               sortedAndFilteredPayments.map((payment) => (
                 <TableRow key={payment.id}>
-                  <TableCell className="font-medium">{payment.member?.name || 'N/A'}</TableCell>
+                  <TableCell className="font-medium min-w-[150px]">{payment.member?.name || 'N/A'}</TableCell>
                   <TableCell>{payment.member?.flatNumber || 'N/A'}</TableCell>
                   <TableCell>₹{payment.amount.toFixed(2)}</TableCell>
                   <TableCell>{format(new Date(payment.date), 'PPP')}</TableCell>

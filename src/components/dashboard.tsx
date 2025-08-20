@@ -235,7 +235,7 @@ export default function Dashboard() {
         <h2 className="text-xl font-semibold text-foreground">
           Financial Overview
         </h2>
-        <div className="flex gap-4">
+        <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
             <Select value={selectedMonth} onValueChange={setSelectedMonth}>
                 <SelectTrigger className="w-full sm:w-[180px]">
                     <SelectValue placeholder="Select Month" />
@@ -295,7 +295,7 @@ export default function Dashboard() {
       </div>
       
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
             <CardTitle>Expense History</CardTitle>
             <p className="text-sm text-muted-foreground">
@@ -305,7 +305,7 @@ export default function Dashboard() {
           {isEditor && (
             <Dialog open={isExpenseDialogOpen} onOpenChange={setIsExpenseDialogOpen}>
                 <DialogTrigger asChild>
-                    <Button className="print-hide">
+                    <Button className="print-hide w-full sm:w-auto">
                         <PlusCircle className="mr-2 h-4 w-4" />
                         Record Expense
                     </Button>
@@ -372,7 +372,7 @@ export default function Dashboard() {
           )}
         </CardHeader>
         <CardContent>
-          <div className="rounded-md border table-print">
+          <div className="rounded-md border table-print overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -386,7 +386,7 @@ export default function Dashboard() {
                 {isLoading ? (
                     Array.from({ length: 3 }).map((_, i) => (
                         <TableRow key={i}>
-                            <TableCell><Skeleton className="h-5 w-48" /></TableCell>
+                            <TableCell><Skeleton className="h-5 w-32 sm:w-48" /></TableCell>
                             <TableCell><Skeleton className="h-5 w-24" /></TableCell>
                             <TableCell><Skeleton className="h-5 w-24" /></TableCell>
                             <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto rounded-full" /></TableCell>
@@ -395,7 +395,7 @@ export default function Dashboard() {
                 ) : sortedExpenses.length > 0 ? (
                   sortedExpenses.map((expense) => (
                     <TableRow key={expense.id}>
-                      <TableCell className="font-medium">{expense.description}</TableCell>
+                      <TableCell className="font-medium min-w-[150px]">{expense.description}</TableCell>
                       <TableCell>{formatCurrency(expense.amount)}</TableCell>
                       <TableCell>{format(new Date(expense.date), 'PPP')}</TableCell>
                       <TableCell className="text-right print-hide">
@@ -438,7 +438,3 @@ export default function Dashboard() {
     </div>
   );
 }
-
-    
-
-    

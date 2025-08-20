@@ -37,19 +37,19 @@ export default function HistoryPage() {
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-start p-4 sm:p-8 md:p-12 lg:p-24 bg-background">
+    <main className="flex min-h-screen flex-col items-center justify-start p-2 sm:p-4 md:p-8 lg:p-12 bg-background">
       <Card className="w-full max-w-7xl shadow-lg glass-card">
         <CardHeader>
-          <div className="flex justify-between items-start">
-            <div>
-              <CardTitle className="font-headline text-3xl">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div className='flex-1'>
+              <CardTitle className="font-headline text-2xl sm:text-3xl">
                 Aroma Residency - Payment History
               </CardTitle>
               <CardDescription>
                 View all past maintenance payment records.
               </CardDescription>
             </div>
-            <div className="flex gap-2 items-center">
+            <div className="flex gap-2 items-center flex-wrap">
                 <ThemeToggle />
                 <Button asChild variant="outline">
                     <Link href="/">

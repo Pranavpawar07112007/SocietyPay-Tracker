@@ -280,7 +280,7 @@ export default function PaymentTracker() {
                     date: paymentDate.toISOString(),
                     receiptNumber: receiptNumber,
                     paymentMode: 'Online' as const,
-                    transactionId: values.transactionId,
+                    transactionId: values.transactionId || "",
                 };
                 const newPayment = await addPayment(newPaymentData);
                 setPayments(prev => [...prev, newPayment]);
@@ -348,15 +348,15 @@ export default function PaymentTracker() {
   }, [membersWithPayments, filter]);
 
   const renderTable = (memberList: MemberWithPayment[]) => (
-    <div className="rounded-md border">
+    <div className="rounded-md border overflow-x-auto">
         <Table>
         <TableHeader>
             <TableRow>
-            <TableHead className="w-[200px]">Member Name</TableHead>
+            <TableHead className="w-1/4">Member Name</TableHead>
             <TableHead>Flat No.</TableHead>
-            <TableHead>Mobile No.</TableHead>
+            <TableHead className="hidden sm:table-cell">Mobile No.</TableHead>
             <TableHead>Amount Paid</TableHead>
-            <TableHead>Payment Date</TableHead>
+            <TableHead className="hidden md:table-cell">Payment Date</TableHead>
             <TableHead>Status</TableHead>
             <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -367,9 +367,9 @@ export default function PaymentTracker() {
                 <TableRow key={i}>
                 <TableCell><Skeleton className="h-5 w-32" /></TableCell>
                 <TableCell><Skeleton className="h-5 w-16" /></TableCell>
-                <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                <TableCell className="hidden sm:table-cell"><Skeleton className="h-5 w-24" /></TableCell>
                 <TableCell><Skeleton className="h-5 w-20" /></TableCell>
-                <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-24" /></TableCell>
                 <TableCell><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
                 <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
                 </TableRow>
@@ -377,25 +377,25 @@ export default function PaymentTracker() {
             ) : memberList.length > 0 ? (
                 memberList.map((member) => (
                 <TableRow key={member.id}>
-                <TableCell className="font-medium">{member.name}</TableCell>
+                <TableCell className="font-medium min-w-[150px]">{member.name}</TableCell>
                 <TableCell>{member.flatNumber}</TableCell>
-                <TableCell>{member.mobileNumber}</TableCell>
+                <TableCell className="hidden sm:table-cell">{member.mobileNumber}</TableCell>
                 <TableCell>
                     {member.currentMonthPayment ? `₹${member.currentMonthPayment.amount.toFixed(2)}` : "N/A"}
                 </TableCell>
-                <TableCell>
+                <TableCell className="hidden md:table-cell">
                     {member.currentMonthPayment
                     ? format(new Date(member.currentMonthPayment.date), "PPP")
                     : "N/A"}
                 </TableCell>
                 <TableCell>
                     {member.currentMonthPayment ? (
-                    <Badge className="bg-accent text-accent-foreground hover:bg-accent/80">
+                    <Badge className="bg-accent text-accent-foreground hover:bg-accent/80 whitespace-nowrap">
                         <CheckCircle2 className="mr-2 h-4 w-4" />
                         Paid
                     </Badge>
                     ) : (
-                    <Badge variant="destructive">
+                    <Badge variant="destructive" className="whitespace-nowrap">
                         <XCircle className="mr-2 h-4 w-4" />
                         Unpaid
                     </Badge>
@@ -475,33 +475,33 @@ export default function PaymentTracker() {
     <>
       <Card className="w-full max-w-5xl shadow-lg glass-card">
         <CardHeader>
-          <div className="flex justify-between items-start">
-            <div className="flex items-center space-x-4">
-              <ReceiptText className="h-10 w-10 text-primary" />
+          <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+            <div className="flex items-center space-x-2 sm:space-x-4">
+              <ReceiptText className="h-8 w-8 sm:h-10 sm:w-10 text-primary" />
               <div>
-                <CardTitle className="font-headline text-3xl">
+                <CardTitle className="font-headline text-xl sm:text-3xl">
                   Aroma Residency Co-operative Housing Society Limited
                 </CardTitle>
-                <CardDescription>
+                <CardDescription className="text-xs sm:text-sm">
                   Track and manage monthly maintenance payments for society members.
                 </CardDescription>
               </div>
             </div>
-            <div className="text-right flex flex-col items-end gap-2">
+            <div className="text-right flex flex-col items-end gap-2 self-start sm:self-center">
                 <div>
-                    <p className="text-lg font-semibold text-muted-foreground">{format(new Date(), 'MMMM')}</p>
-                    <p className="text-sm text-muted-foreground">{format(new Date(), 'yyyy')}</p>
+                    <p className="text-base sm:text-lg font-semibold text-muted-foreground">{format(new Date(), 'MMMM')}</p>
+                    <p className="text-xs sm:text-sm text-muted-foreground">{format(new Date(), 'yyyy')}</p>
                 </div>
             </div>
           </div>
         </CardHeader>
         <CardContent>
             <Tabs value={filter} onValueChange={setFilter}>
-                <div className="flex justify-between items-center mb-4">
-                    <TabsList>
-                    <TabsTrigger value="all">All Members</TabsTrigger>
-                    <TabsTrigger value="paid">Paid</TabsTrigger>
-                    <TabsTrigger value="unpaid">Unpaid</TabsTrigger>
+                <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center mb-4 gap-4">
+                    <TabsList className="grid grid-cols-3 w-full sm:w-auto">
+                        <TabsTrigger value="all">All</TabsTrigger>
+                        <TabsTrigger value="paid">Paid</TabsTrigger>
+                        <TabsTrigger value="unpaid">Unpaid</TabsTrigger>
                     </TabsList>
                     {isEditor && (
                         <Button onClick={handleAddMemberClick} disabled={isPending}>
@@ -660,13 +660,3 @@ export default function PaymentTracker() {
     </>
   );
 }
-    
-
-    
-
-
-
-
-
-
-    

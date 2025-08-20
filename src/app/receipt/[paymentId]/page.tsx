@@ -114,12 +114,10 @@ export default function ReceiptPage() {
     const canvasWidth = canvas.width;
     const canvasHeight = canvas.height;
     const canvasAspectRatio = canvasWidth / canvasHeight;
-    const pdfAspectRatio = pdfWidth / pdfHeight;
 
-    let finalWidth, finalHeight;
     // Fit canvas to width of PDF
-    finalWidth = pdfWidth;
-    finalHeight = finalWidth / canvasAspectRatio;
+    const finalWidth = pdfWidth;
+    const finalHeight = finalWidth / canvasAspectRatio;
 
     // Center the image on the page
     const x = 0;
@@ -162,29 +160,32 @@ export default function ReceiptPage() {
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-start p-4 sm:p-8 md:p-12 lg:p-24 bg-background">
+    <main className="flex min-h-screen flex-col items-center justify-start p-2 sm:p-4 md:p-8 lg:p-12 bg-background">
         <div className="w-full max-w-2xl">
-            <div className="flex justify-between items-center mb-4 print-hide">
+            <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center mb-4 print-hide gap-2">
                 {user ? (
                     <>
-                        <Button asChild variant="outline">
+                        <Button asChild variant="outline" className="w-full sm:w-auto">
                             <Link href="/history">
                                 <ArrowLeft className="mr-2 h-4 w-4" />
                                 Back to History
                             </Link>
                         </Button>
-                        <div className="flex gap-2">
+                        <div className="flex flex-col sm:flex-row gap-2">
                             <Button onClick={handleSendWhatsApp} variant="outline" disabled={isLoading || !!error}>
                                 <WhatsAppIcon />
-                                <span className="ml-2">Send on WhatsApp</span>
+                                <span className="ml-2 hidden sm:inline">Send on WhatsApp</span>
+                                <span className="ml-2 sm:hidden">Send</span>
                             </Button>
                             <Button onClick={handleDownloadPdf} variant="outline" disabled={isLoading || !!error}>
                                 <FileDown className="mr-2 h-4 w-4" />
-                                Download PDF
+                                <span className='hidden sm:inline'>Download PDF</span>
+                                <span className='sm:hidden'>Download</span>
                             </Button>
                             <Button onClick={handlePrint} disabled={isLoading || !!error}>
                                 <Printer className="mr-2 h-4 w-4" />
-                                Print Receipt
+                                <span className='hidden sm:inline'>Print Receipt</span>
+                                <span className='sm:hidden'>Print</span>
                             </Button>
                         </div>
                     </>
@@ -282,7 +283,7 @@ export default function ReceiptPage() {
                         </>
                     ) : null}
                 </CardContent>
-                <CardFooter className="flex justify-between p-6 bg-muted/50 text-xs text-muted-foreground">
+                <CardFooter className="flex flex-col sm:flex-row justify-between p-6 bg-muted/50 text-xs text-muted-foreground text-center sm:text-left">
                     <p>This is a computer-generated receipt and does not require a signature.</p>
                     <p>Secretary, Aroma Residency</p>
                 </CardFooter>
