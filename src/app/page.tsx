@@ -30,7 +30,7 @@ export default function Home() {
     }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-start p-4 sm:p-8 md:p-12 lg:p-24 bg-gradient-to-br from-background to-muted/30 dark:from-background dark:to-muted/10 shadow-inner-lg">
+    <main className="flex min-h-screen flex-col items-center justify-start p-4 sm:p-8 md:p-12 lg:p-24 bg-background">
       <div className="w-full max-w-5xl mb-4 flex justify-end items-center gap-2">
         <ThemeToggle />
         <Button asChild>

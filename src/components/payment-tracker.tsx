@@ -451,7 +451,7 @@ export default function PaymentTracker() {
 
   return (
     <>
-      <Card className="w-full max-w-5xl shadow-lg">
+      <Card className="w-full max-w-5xl shadow-lg glass-card">
         <CardHeader>
           <div className="flex justify-between items-start">
             <div className="flex items-center space-x-4">
@@ -473,7 +473,7 @@ export default function PaymentTracker() {
             </div>
           </div>
         </CardHeader>
-        <CardContent className="bg-gradient-to-br from-card to-muted/30 dark:from-card dark:to-muted/10 shadow-inner-lg">
+        <CardContent>
             <Tabs value={filter} onValueChange={setFilter}>
                 <div className="flex justify-between items-center mb-4">
                     <TabsList>

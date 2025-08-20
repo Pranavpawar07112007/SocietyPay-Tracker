@@ -37,8 +37,8 @@ export default function HistoryPage() {
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-start p-4 sm:p-8 md:p-12 lg:p-24 bg-gradient-to-br from-background to-muted/30 dark:from-background dark:to-muted/10 shadow-inner-lg">
-      <Card className="w-full max-w-7xl shadow-lg">
+    <main className="flex min-h-screen flex-col items-center justify-start p-4 sm:p-8 md:p-12 lg:p-24 bg-background">
+      <Card className="w-full max-w-7xl shadow-lg glass-card">
         <CardHeader>
           <div className="flex justify-between items-start">
             <div>

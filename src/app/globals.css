@@ -43,9 +43,9 @@ body {
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
   .dark {
-    --background: 240 10% 3.9%;
+    --background: 240 5% 7%;
     --foreground: 0 0% 98%;
-    --card: 240 5.9% 10%;
+    --card: 240 5% 12%;
     --card-foreground: 0 0% 98%;
     --popover: 240 5.9% 10%;
     --popover-foreground: 0 0% 98%;
@@ -55,8 +55,8 @@ body {
     --secondary-foreground: 0 0% 98%;
     --muted: 240 3.7% 15.9%;
     --muted-foreground: 0 0% 63.9%;
-    --accent: 125 34% 40%;
-    --accent-foreground: 125 30% 95%;
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
     --border: 240 3.7% 15.9%;
@@ -85,7 +85,20 @@ body {
   body {
     @apply bg-background text-foreground;
   }
+  .dark {
+    background-color: #0C0A09;
+  }
 }
+
+@layer utilities {
+    .glass-card {
+        @apply bg-card/60 backdrop-blur-xl border border-white/10 shadow-lg;
+    }
+    .dark .glass-card {
+        background-color: rgba(20, 20, 20, 0.6);
+    }
+}
+
 
 @media print {
   body {
