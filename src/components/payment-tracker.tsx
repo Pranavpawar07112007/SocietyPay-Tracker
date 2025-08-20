@@ -58,7 +58,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Table,
   TableBody,
@@ -81,16 +80,8 @@ const paymentSchema = z.object({
   date: z.date({
     required_error: "A payment date is required.",
   }),
-  paymentMode: z.enum(['Cash', 'Online'], { required_error: 'Please select a payment mode.'}),
-  transactionId: z.string().optional(),
-}).refine(data => {
-    if (data.paymentMode === 'Online') {
-        return !!data.transactionId && data.transactionId.length > 0;
-    }
-    return true;
-}, {
-    message: "Transaction ID is required for online payments.",
-    path: ["transactionId"],
+  paymentMode: z.literal('Online').default('Online'),
+  transactionId: z.string().min(1, "Transaction ID is required for online payments."),
 });
 
 const memberSchema = z.object({
@@ -118,11 +109,10 @@ export default function PaymentTracker() {
   const paymentForm = useForm<z.infer<typeof paymentSchema>>({
     resolver: zodResolver(paymentSchema),
     defaultValues: {
-        paymentMode: "Cash",
+        paymentMode: "Online",
+        transactionId: "",
     }
   });
-  
-  const paymentMode = paymentForm.watch('paymentMode');
 
   const memberForm = useForm<z.infer<typeof memberSchema>>({
     resolver: zodResolver(memberSchema),
@@ -169,14 +159,14 @@ export default function PaymentTracker() {
         paymentForm.reset({
           amount: editingPayment.amount,
           date: new Date(editingPayment.date),
-          paymentMode: editingPayment.paymentMode,
+          paymentMode: 'Online',
           transactionId: editingPayment.transactionId,
         });
       } else {
         paymentForm.reset({
             amount: '' as any, // Use empty string for controlled input
             date: new Date(),
-            paymentMode: "Cash",
+            paymentMode: "Online",
             transactionId: "",
         });
       }
@@ -254,7 +244,7 @@ export default function PaymentTracker() {
             const paymentData: Partial<Payment> = {
                 amount: values.amount,
                 date: values.date.toISOString(),
-                paymentMode: values.paymentMode,
+                paymentMode: 'Online',
                 transactionId: values.transactionId,
             };
 
@@ -276,8 +266,8 @@ export default function PaymentTracker() {
                     amount: values.amount,
                     date: values.date.toISOString(),
                     receiptNumber: receiptNumber,
-                    paymentMode: values.paymentMode,
-                    transactionId: values.paymentMode === 'Online' ? values.transactionId : undefined,
+                    paymentMode: 'Online' as const,
+                    transactionId: values.transactionId,
                 };
                 const newPayment = await addPayment(newPaymentData);
                 setPayments(prev => [...prev, newPayment]);
@@ -586,53 +576,17 @@ export default function PaymentTracker() {
                 />
                 <FormField
                   control={paymentForm.control}
-                  name="paymentMode"
+                  name="transactionId"
                   render={({ field }) => (
-                    <FormItem className="space-y-3">
-                      <FormLabel>Payment Mode</FormLabel>
+                      <FormItem>
+                      <FormLabel>Transaction ID</FormLabel>
                       <FormControl>
-                        <RadioGroup
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                          className="flex space-x-4"
-                        >
-                          <FormItem className="flex items-center space-x-3 space-y-0">
-                            <FormControl>
-                              <RadioGroupItem value="Cash" />
-                            </FormControl>
-                            <FormLabel className="font-normal">
-                              Cash
-                            </FormLabel>
-                          </FormItem>
-                          <FormItem className="flex items-center space-x-3 space-y-0">
-                            <FormControl>
-                              <RadioGroupItem value="Online" />
-                            </FormControl>
-                            <FormLabel className="font-normal">
-                              Online
-                            </FormLabel>
-                          </FormItem>
-                        </RadioGroup>
+                          <Input placeholder="Enter transaction ID" {...field} />
                       </FormControl>
                       <FormMessage />
-                    </FormItem>
+                      </FormItem>
                   )}
                 />
-                {paymentMode === 'Online' && (
-                    <FormField
-                    control={paymentForm.control}
-                    name="transactionId"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Transaction ID</FormLabel>
-                        <FormControl>
-                            <Input placeholder="Enter transaction ID" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                    />
-                )}
               </div>
 
               <DialogFooter>
@@ -713,3 +667,5 @@ export default function PaymentTracker() {
     </>
   );
 }
+
+    
