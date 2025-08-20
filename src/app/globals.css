@@ -78,7 +78,7 @@
     }
     
     .glass-effect {
-      @apply bg-background/60 backdrop-blur-lg border border-solid border-white/20 text-foreground;
+      @apply bg-background/60 backdrop-blur-2xl border border-solid border-white/20 text-foreground;
     }
 
     .glass-effect.bg-primary {
