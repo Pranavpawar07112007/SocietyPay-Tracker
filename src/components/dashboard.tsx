@@ -73,6 +73,9 @@ const expenseSchema = z.object({
 const ALL_MONTHS = "all-months";
 const ALL_YEARS = "all-years";
 
+// This is the opening balance as of the start of tracking in this app.
+const OPENING_BALANCE = 67689.94;
+
 export default function Dashboard() {
   const { toast } = useToast();
   const { isEditor } = useAuth();
@@ -154,11 +157,13 @@ export default function Dashboard() {
   }, [payments, expenses, selectedMonth, selectedYear]);
 
   const { totalCollected, totalExpenses, netBalance } = useMemo(() => {
-    const totalCollected = filteredData.filteredPayments.reduce((sum, p) => sum + p.amount, 0);
+    const isAllTime = selectedMonth === ALL_MONTHS && selectedYear === ALL_YEARS;
+    const collectionsFromPayments = filteredData.filteredPayments.reduce((sum, p) => sum + p.amount, 0);
+    const totalCollected = collectionsFromPayments + (isAllTime ? OPENING_BALANCE : 0);
     const totalExpenses = filteredData.filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
     const netBalance = totalCollected - totalExpenses;
     return { totalCollected, totalExpenses, netBalance };
-  }, [filteredData]);
+  }, [filteredData, selectedMonth, selectedYear]);
   
   const sortedExpenses = useMemo(() => {
     return [...filteredData.filteredExpenses].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
