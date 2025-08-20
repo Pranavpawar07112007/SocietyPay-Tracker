@@ -8,9 +8,6 @@ import { ThemeProvider } from '@/components/theme-provider';
 export const metadata: Metadata = {
   title: 'SocietyPay Tracker',
   description: 'Track society maintenance payments.',
-  icons: {
-    icon: '/favicon.ico',
-  },
 };
 
 export default function RootLayout({
