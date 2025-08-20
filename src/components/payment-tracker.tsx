@@ -6,7 +6,7 @@ import { useState, useEffect, useMemo, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { format, getYear, isSameMonth } from "date-fns";
+import { format, getYear, isSameMonth, parse } from "date-fns";
 import { CalendarIcon, CheckCircle2, XCircle, ReceiptText, MoreHorizontal, Pencil, UserPlus, Trash2, MessageSquare } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -78,8 +78,8 @@ const paymentSchema = z.object({
   amount: z.coerce
     .number({ invalid_type_error: "Please enter a valid amount." })
     .positive({ message: "Amount must be greater than 0." }),
-  date: z.date({
-    required_error: "A payment date is required.",
+  date: z.string().refine((val) => !isNaN(Date.parse(val)), {
+    message: "Please enter a valid date in YYYY-MM-DD format.",
   }),
   paymentMode: z.literal('Online').default('Online'),
   transactionId: z.string().min(1, "Transaction ID is required for online payments."),
@@ -113,6 +113,7 @@ export default function PaymentTracker() {
     defaultValues: {
         paymentMode: "Online",
         transactionId: "",
+        date: format(new Date(), 'yyyy-MM-dd'),
     }
   });
 
@@ -160,14 +161,14 @@ export default function PaymentTracker() {
       if (editingPayment) {
         paymentForm.reset({
           amount: editingPayment.amount,
-          date: new Date(editingPayment.date),
+          date: format(new Date(editingPayment.date), 'yyyy-MM-dd'),
           paymentMode: 'Online',
           transactionId: editingPayment.transactionId,
         });
       } else {
         paymentForm.reset({
             amount: '' as any, // Use empty string for controlled input
-            date: new Date(),
+            date: format(new Date(), 'yyyy-MM-dd'),
             paymentMode: "Online",
             transactionId: "",
         });
@@ -245,7 +246,7 @@ export default function PaymentTracker() {
         try {
             const paymentData: Partial<Payment> = {
                 amount: values.amount,
-                date: values.date.toISOString(),
+                date: new Date(values.date).toISOString(),
                 paymentMode: 'Online',
                 transactionId: values.transactionId,
             };
@@ -258,7 +259,8 @@ export default function PaymentTracker() {
                     description: `Payment for ${selectedMember.name} has been updated.`,
                 });
             } else {
-                 const paymentYear = getYear(values.date);
+                 const paymentDate = new Date(values.date);
+                 const paymentYear = getYear(paymentDate);
                  const paymentsInYear = await getPaymentsForYear(paymentYear);
                  const nextReceiptNumber = paymentsInYear.length + 1;
                  const receiptNumber = `${nextReceiptNumber}/${paymentYear}`;
@@ -266,7 +268,7 @@ export default function PaymentTracker() {
                  const newPaymentData = {
                     memberId: selectedMember.id,
                     amount: values.amount,
-                    date: values.date.toISOString(),
+                    date: paymentDate.toISOString(),
                     receiptNumber: receiptNumber,
                     paymentMode: 'Online' as const,
                     transactionId: values.transactionId,
@@ -547,42 +549,11 @@ export default function PaymentTracker() {
                   control={paymentForm.control}
                   name="date"
                   render={({ field }) => (
-                    <FormItem className="flex flex-col">
+                    <FormItem>
                       <FormLabel>Payment Date</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant={"outline"}
-                              className={cn(
-                                "w-full pl-3 text-left font-normal",
-                                !field.value && "text-muted-foreground"
-                              )}
-                            >
-                              {field.value ? (
-                                format(field.value, "PPP")
-                              ) : (
-                                <span>Pick a date</span>
-                              )}
-                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={field.value}
-                            onSelect={field.onChange}
-                            captionLayout="dropdown-buttons"
-                            fromYear={getYear(new Date()) - 5}
-                            toYear={getYear(new Date())}
-                            disabled={(date) =>
-                              date > new Date() || date < new Date("2020-01-01")
-                            }
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
+                       <FormControl>
+                        <Input placeholder="YYYY-MM-DD" type="date" {...field} />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -687,3 +658,6 @@ export default function PaymentTracker() {
 
 
 
+
+
+    
