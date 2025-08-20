@@ -462,7 +462,7 @@ export default function PaymentTracker() {
 
   return (
     <>
-      <Card className="w-full max-w-5xl shadow-lg">
+      <Card className="w-full max-w-5xl shadow-lg glass-card">
         <CardHeader>
           <div className="flex justify-between items-start">
             <div className="flex items-center space-x-4">
@@ -683,6 +683,7 @@ export default function PaymentTracker() {
     
 
     
+
 
 
 
