@@ -23,7 +23,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import {
   AlertDialog,
@@ -272,20 +271,7 @@ export default function Dashboard() {
             </Select>
         </div>
       </div>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {openingBalance > 0 && (
-             <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">
-                    Opening Balance
-                    </CardTitle>
-                    <Banknote className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                    {isLoading ? <Skeleton className="h-8 w-3/4" /> : <div className="text-2xl font-bold">{formatCurrency(openingBalance)}</div>}
-                </CardContent>
-            </Card>
-        )}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
@@ -295,9 +281,11 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             {isLoading ? <Skeleton className="h-8 w-3/4" /> : <div className="text-2xl font-bold">{formatCurrency(totalCollected)}</div>}
-             <p className="text-xs text-muted-foreground">
-                {openingBalance > 0 ? '(Including Opening Balance)' : ''}
-            </p>
+            {openingBalance > 0 && (
+                 <p className="text-xs text-muted-foreground">
+                    (Including Opening Balance)
+                </p>
+            )}
           </CardContent>
         </Card>
         <Card>
@@ -466,3 +454,5 @@ export default function Dashboard() {
     </div>
   );
 }
+
+    
