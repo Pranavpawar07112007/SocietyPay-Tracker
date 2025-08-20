@@ -7,7 +7,7 @@ import {
   User, 
   signOut as firebaseSignOut,
   createUserWithEmailAndPassword,
-  signInWithEmailAndPassword
+  signInWithEmailAndPassword,
 } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
@@ -45,7 +45,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setLoading(true);
     try {
       await createUserWithEmailAndPassword(auth, email, pass);
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.code === 'auth/email-already-in-use') {
+        // This is an expected error, rethrow it to be handled by the UI
+        throw error;
+      }
       console.error("Error signing up", error);
       throw error;
     } finally {
@@ -57,9 +61,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, pass);
-    } catch (error) {
-      console.error("Error signing in", error);
-      throw error;
+    } catch (error: any) {
+        if (error?.code === 'auth/invalid-credential') {
+            // This is an expected error, rethrow it to be handled by the UI
+            throw error;
+        }
+        console.error("Error signing in", error);
+        throw error;
     } finally {
       setLoading(false);
     }

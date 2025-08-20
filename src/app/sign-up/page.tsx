@@ -48,11 +48,16 @@ export default function SignUpPage() {
                 await signUp(values.email, values.password);
                 router.push('/');
             } catch (error: any) {
-                console.error("Sign up failed", error);
+                let description = "An unexpected error occurred. Please try again.";
+                if (error?.code === 'auth/email-already-in-use') {
+                    description = "This email is already in use. Please sign in or use a different email.";
+                } else {
+                    console.error("Sign up failed", error);
+                }
                  toast({
                     variant: "destructive",
                     title: "Sign Up Failed",
-                    description: error.message || "An unexpected error occurred. Please try again."
+                    description: description,
                 });
             }
         });
