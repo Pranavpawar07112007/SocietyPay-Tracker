@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import PaymentTracker from '@/components/payment-tracker';
 import { History, LayoutDashboard, LogOut, Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 export default function Home() {
     const { user, signOut, loading } = useAuth();
@@ -31,6 +32,7 @@ export default function Home() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-start p-4 sm:p-8 md:p-12 lg:p-24 bg-background">
       <div className="w-full max-w-5xl mb-4 flex justify-end items-center gap-2">
+        <ThemeToggle />
         <Button asChild>
           <Link href="/dashboard">
             <LayoutDashboard className="mr-2 h-4 w-4" />

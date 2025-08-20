@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/card';
 import PaymentHistory from '@/components/payment-history';
 import { useAuth } from '@/hooks/use-auth';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 export default function HistoryPage() {
   const { user, loading } = useAuth();
@@ -48,7 +49,8 @@ export default function HistoryPage() {
                 View all past maintenance payment records.
               </CardDescription>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 items-center">
+                <ThemeToggle />
                 <Button asChild variant="outline">
                     <Link href="/">
                         <Home className="mr-2 h-4 w-4" />

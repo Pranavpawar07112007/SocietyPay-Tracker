@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/card';
 import Dashboard from '@/components/dashboard';
 import { useAuth } from '@/hooks/use-auth';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 export default function DashboardPage() {
   const { user, loading } = useAuth();
@@ -52,7 +53,8 @@ export default function DashboardPage() {
                 An overview of your society's finances.
               </CardDescription>
             </div>
-            <div className="flex gap-2 print-hide">
+            <div className="flex gap-2 print-hide items-center">
+                <ThemeToggle />
                 <Button asChild variant="outline">
                     <Link href="/">
                         <Home className="mr-2 h-4 w-4" />
