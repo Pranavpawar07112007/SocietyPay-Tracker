@@ -484,7 +484,7 @@ export default function PaymentTracker() {
             </div>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="glass-effect bg-card/60 rounded-lg">
             <Tabs value={filter} onValueChange={setFilter}>
                 <div className="flex justify-between items-center mb-4">
                     <TabsList>
@@ -683,3 +683,4 @@ export default function PaymentTracker() {
     
 
     
+
