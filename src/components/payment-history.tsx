@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from 'react';
@@ -44,6 +45,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { deletePayment, getMembers, getPayments } from '@/services/firestore';
+import { useAuth } from '@/hooks/use-auth';
 
 type PaymentWithMember = Payment & { member: Member | undefined };
 type SortKey = keyof PaymentWithMember | 'member.name' | 'member.flatNumber';
@@ -53,6 +55,7 @@ const ALL_YEARS = "all-years";
 
 export default function PaymentHistory() {
   const { toast } = useToast();
+  const { isEditor } = useAuth();
   const [members, setMembers] = useState<Member[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -86,7 +89,7 @@ export default function PaymentHistory() {
 
 
   const handleDeletePayment = () => {
-    if (!paymentToDelete) return;
+    if (!paymentToDelete || !isEditor) return;
     startTransition(async () => {
         try {
             await deletePayment(paymentToDelete.id);
@@ -278,11 +281,15 @@ export default function PaymentHistory() {
                                     <span>Generate Receipt</span>
                                   </Link>
                                 </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setPaymentToDelete(payment); }} className="text-red-600" disabled={isPending}>
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    <span>Delete</span>
-                                </DropdownMenuItem>
+                                {isEditor && (
+                                    <>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setPaymentToDelete(payment); }} className="text-red-600" disabled={isPending}>
+                                            <Trash2 className="mr-2 h-4 w-4" />
+                                            <span>Delete</span>
+                                        </DropdownMenuItem>
+                                    </>
+                                )}
                             </DropdownMenuContent>
                         </DropdownMenu>
                         <AlertDialogContent>

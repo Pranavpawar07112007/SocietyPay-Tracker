@@ -72,6 +72,7 @@ import { useToast } from "@/hooks/use-toast";
 import type { Member, Payment } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { addMember, addPayment, deleteMember, getMembers, getPayments, getPaymentsForYear, updateMember, updatePayment } from "@/services/firestore";
+import { useAuth } from "@/hooks/use-auth";
 
 const paymentSchema = z.object({
   amount: z.coerce
@@ -94,6 +95,7 @@ type MemberWithPayment = Member & { currentMonthPayment: Payment | null };
 
 export default function PaymentTracker() {
   const { toast } = useToast();
+  const { isEditor } = useAuth();
   const [members, setMembers] = useState<Member[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -205,7 +207,7 @@ export default function PaymentTracker() {
   };
 
   const handleDeleteMember = () => {
-    if (!memberToDelete) return;
+    if (!memberToDelete || !isEditor) return;
 
     startTransition(async () => {
         try {
@@ -237,7 +239,7 @@ export default function PaymentTracker() {
   }
 
   const onPaymentSubmit = (values: z.infer<typeof paymentSchema>) => {
-    if (!selectedMember) return;
+    if (!selectedMember || !isEditor) return;
 
     startTransition(async () => {
         try {
@@ -292,6 +294,7 @@ export default function PaymentTracker() {
   };
 
   const onMemberSubmit = (values: z.infer<typeof memberSchema>) => {
+    if (!isEditor) return;
     startTransition(async () => {
         try {
             if (selectedMember) {
@@ -397,25 +400,33 @@ export default function PaymentTracker() {
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleRecordPaymentClick(member)} disabled={isPending}>
-                            <ReceiptText className="mr-2 h-4 w-4" />
-                            <span>{member.currentMonthPayment ? "Edit Payment" : "Record Payment"}</span>
-                            </DropdownMenuItem>
-                             {!member.currentMonthPayment && (
+                            {isEditor && (
+                                <DropdownMenuItem onClick={() => handleRecordPaymentClick(member)} disabled={isPending}>
+                                    <ReceiptText className="mr-2 h-4 w-4" />
+                                    <span>{member.currentMonthPayment ? "Edit Payment" : "Record Payment"}</span>
+                                </DropdownMenuItem>
+                            )}
+                             {!member.currentMonthPayment && isEditor && (
                                 <DropdownMenuItem onClick={() => handleSendReminder(member)} disabled={isPending}>
                                     <MessageSquare className="mr-2 h-4 w-4" />
                                     <span>Send Reminder</span>
                                 </DropdownMenuItem>
                             )}
-                            <DropdownMenuItem onClick={() => handleEditMemberClick(member)} disabled={isPending}>
-                            <Pencil className="mr-2 h-4 w-4" />
-                            <span>Edit Member</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-red-600" onSelect={(e) => { e.preventDefault(); setMemberToDelete(member); }} disabled={isPending}>
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete Member
-                            </DropdownMenuItem>
+                            {isEditor && <DropdownMenuSeparator />}
+                            {isEditor && (
+                                <DropdownMenuItem onClick={() => handleEditMemberClick(member)} disabled={isPending}>
+                                <Pencil className="mr-2 h-4 w-4" />
+                                <span>Edit Member</span>
+                                </DropdownMenuItem>
+                            )}
+                            {isEditor && <DropdownMenuSeparator />}
+                            {isEditor && (
+                                <DropdownMenuItem className="text-red-600" onSelect={(e) => { e.preventDefault(); setMemberToDelete(member); }} disabled={isPending}>
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Delete Member
+                                </DropdownMenuItem>
+                            )}
+                            {!isEditor && <DropdownMenuItem disabled>Read-only access</DropdownMenuItem>}
                         </DropdownMenuContent>
                         </DropdownMenu>
                         <AlertDialogContent>
@@ -481,10 +492,12 @@ export default function PaymentTracker() {
                     <TabsTrigger value="paid">Paid</TabsTrigger>
                     <TabsTrigger value="unpaid">Unpaid</TabsTrigger>
                     </TabsList>
-                    <Button onClick={handleAddMemberClick} disabled={isPending}>
-                        <UserPlus className="mr-2 h-4 w-4" />
-                        Add Member
-                    </Button>
+                    {isEditor && (
+                        <Button onClick={handleAddMemberClick} disabled={isPending}>
+                            <UserPlus className="mr-2 h-4 w-4" />
+                            Add Member
+                        </Button>
+                    )}
                 </div>
                 <TabsContent value="all" className="mt-0">
                     {renderTable(filteredMembers)}
@@ -591,7 +604,7 @@ export default function PaymentTracker() {
 
               <DialogFooter>
                 <Button type="button" variant="ghost" onClick={() => setIsPaymentDialogOpen(false)} disabled={isPending}>Cancel</Button>
-                <Button type="submit" disabled={isPending}>Save Payment</Button>
+                <Button type="submit" disabled={isPending || !isEditor}>Save Payment</Button>
               </DialogFooter>
             </form>
           </Form>
@@ -657,7 +670,8 @@ export default function PaymentTracker() {
               </div>
 
               <DialogFooter>
-                <Button type="button" variant="ghost" onClick={() => setIsMemberDialogOpen(false)} disabled={isPending}>{selectedMember ? 'Save Changes' : 'Add Member'}</Button>
+                <Button type="button" variant="ghost" onClick={() => setIsMemberDialogOpen(false)} disabled={isPending}>Cancel</Button>
+                <Button type="submit" disabled={isPending || !isEditor}>{selectedMember ? 'Save Changes' : 'Add Member'}</Button>
               </DialogFooter>
             </form>
           </Form>

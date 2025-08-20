@@ -60,6 +60,7 @@ import {
 } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { useAuth } from '@/hooks/use-auth';
 
 const expenseSchema = z.object({
   description: z.string().min(1, 'Description is required.'),
@@ -72,6 +73,7 @@ const ALL_YEARS = "all-years";
 
 export default function Dashboard() {
   const { toast } = useToast();
+  const { isEditor } = useAuth();
   const [payments, setPayments] = useState<Payment[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -168,6 +170,7 @@ export default function Dashboard() {
 
 
   const onExpenseSubmit = (values: z.infer<typeof expenseSchema>) => {
+    if (!isEditor) return;
     startTransition(async () => {
       try {
         const expenseData = {
@@ -194,7 +197,7 @@ export default function Dashboard() {
   };
 
   const handleDeleteExpense = () => {
-    if (!expenseToDelete) return;
+    if (!expenseToDelete || !isEditor) return;
 
     startTransition(async () => {
         try {
@@ -297,103 +300,105 @@ export default function Dashboard() {
                 Track all society expenditures.
             </p>
           </div>
-          <Dialog open={isExpenseDialogOpen} onOpenChange={setIsExpenseDialogOpen}>
-            <DialogTrigger asChild>
-                <Button className="print-hide">
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Record Expense
-                </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
-                <Form {...expenseForm}>
-                    <form onSubmit={expenseForm.handleSubmit(onExpenseSubmit)} className="space-y-8">
-                    <DialogHeader>
-                        <DialogTitle>Record New Expense</DialogTitle>
-                        <DialogDescription>
-                            Enter the details of the expense.
-                        </DialogDescription>
-                    </DialogHeader>
-                    
-                    <div className="grid gap-4 py-4">
-                        <FormField
-                            control={expenseForm.control}
-                            name="description"
-                            render={({ field }) => (
-                                <FormItem>
-                                <FormLabel>Description</FormLabel>
-                                <FormControl>
-                                    <Input placeholder="e.g. Security guard salary" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                         <FormField
-                            control={expenseForm.control}
-                            name="amount"
-                            render={({ field }) => (
-                                <FormItem>
-                                <FormLabel>Amount (₹)</FormLabel>
-                                <FormControl>
-                                    <Input placeholder="e.g. 10000" type="number" step="0.01" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={expenseForm.control}
-                            name="date"
-                            render={({ field }) => (
-                                <FormItem className="flex flex-col">
-                                <FormLabel>Expense Date</FormLabel>
-                                <Popover>
-                                    <PopoverTrigger asChild>
+          {isEditor && (
+            <Dialog open={isExpenseDialogOpen} onOpenChange={setIsExpenseDialogOpen}>
+                <DialogTrigger asChild>
+                    <Button className="print-hide">
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Record Expense
+                    </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[425px]">
+                    <Form {...expenseForm}>
+                        <form onSubmit={expenseForm.handleSubmit(onExpenseSubmit)} className="space-y-8">
+                        <DialogHeader>
+                            <DialogTitle>Record New Expense</DialogTitle>
+                            <DialogDescription>
+                                Enter the details of the expense.
+                            </DialogDescription>
+                        </DialogHeader>
+                        
+                        <div className="grid gap-4 py-4">
+                            <FormField
+                                control={expenseForm.control}
+                                name="description"
+                                render={({ field }) => (
+                                    <FormItem>
+                                    <FormLabel>Description</FormLabel>
                                     <FormControl>
-                                        <Button
-                                        variant={"outline"}
-                                        className={cn(
-                                            "w-full pl-3 text-left font-normal",
-                                            !field.value && "text-muted-foreground"
-                                        )}
-                                        >
-                                        {field.value ? (
-                                            format(field.value, "PPP")
-                                        ) : (
-                                            <span>Pick a date</span>
-                                        )}
-                                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                        </Button>
+                                        <Input placeholder="e.g. Security guard salary" {...field} />
                                     </FormControl>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-auto p-0" align="start">
-                                    <Calendar
-                                        mode="single"
-                                        selected={field.value}
-                                        onSelect={field.onChange}
-                                        captionLayout="dropdown-buttons"
-                                        fromYear={getYear(new Date()) - 5}
-                                        toYear={getYear(new Date())}
-                                        disabled={(date) =>
-                                        date > new Date() || date < new Date("2020-01-01")
-                                        }
-                                        initialFocus
-                                    />
-                                    </PopoverContent>
-                                </Popover>
-                                <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                    </div>
-                    <DialogFooter>
-                        <Button type="button" variant="ghost" onClick={() => setIsExpenseDialogOpen(false)} disabled={isPending}>Cancel</Button>
-                        <Button type="submit" disabled={isPending}>Save Expense</Button>
-                    </DialogFooter>
-                    </form>
-                </Form>
-            </DialogContent>
-          </Dialog>
+                                    <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                             <FormField
+                                control={expenseForm.control}
+                                name="amount"
+                                render={({ field }) => (
+                                    <FormItem>
+                                    <FormLabel>Amount (₹)</FormLabel>
+                                    <FormControl>
+                                        <Input placeholder="e.g. 10000" type="number" step="0.01" {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={expenseForm.control}
+                                name="date"
+                                render={({ field }) => (
+                                    <FormItem className="flex flex-col">
+                                    <FormLabel>Expense Date</FormLabel>
+                                    <Popover>
+                                        <PopoverTrigger asChild>
+                                        <FormControl>
+                                            <Button
+                                            variant={"outline"}
+                                            className={cn(
+                                                "w-full pl-3 text-left font-normal",
+                                                !field.value && "text-muted-foreground"
+                                            )}
+                                            >
+                                            {field.value ? (
+                                                format(field.value, "PPP")
+                                            ) : (
+                                                <span>Pick a date</span>
+                                            )}
+                                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                            </Button>
+                                        </FormControl>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto p-0" align="start">
+                                        <Calendar
+                                            mode="single"
+                                            selected={field.value}
+                                            onSelect={field.onChange}
+                                            captionLayout="dropdown-buttons"
+                                            fromYear={getYear(new Date()) - 5}
+                                            toYear={getYear(new Date())}
+                                            disabled={(date) =>
+                                            date > new Date() || date < new Date("2020-01-01")
+                                            }
+                                            initialFocus
+                                        />
+                                        </PopoverContent>
+                                    </Popover>
+                                    <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
+                        <DialogFooter>
+                            <Button type="button" variant="ghost" onClick={() => setIsExpenseDialogOpen(false)} disabled={isPending}>Cancel</Button>
+                            <Button type="submit" disabled={isPending || !isEditor}>Save Expense</Button>
+                        </DialogFooter>
+                        </form>
+                    </Form>
+                </DialogContent>
+              </Dialog>
+          )}
         </CardHeader>
         <CardContent>
           <div className="rounded-md border table-print">
@@ -423,24 +428,26 @@ export default function Dashboard() {
                       <TableCell>{formatCurrency(expense.amount)}</TableCell>
                       <TableCell>{format(new Date(expense.date), 'PPP')}</TableCell>
                       <TableCell className="text-right print-hide">
-                         <AlertDialog open={expenseToDelete?.id === expense.id} onOpenChange={(open) => !open && setExpenseToDelete(null)}>
-                            <Button variant="ghost" size="icon" onClick={() => setExpenseToDelete(expense)} disabled={isPending}>
-                                <Trash2 className="h-4 w-4" />
-                                <span className="sr-only">Delete</span>
-                            </Button>
-                            <AlertDialogContent>
-                                <AlertDialogHeader>
-                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                    This action cannot be undone. This will permanently delete the expense: "{expense.description}".
-                                </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                <AlertDialogCancel onClick={() => setExpenseToDelete(null)}>Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={handleDeleteExpense}>Delete</AlertDialogAction>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
+                         {isEditor && (
+                            <AlertDialog open={expenseToDelete?.id === expense.id} onOpenChange={(open) => !open && setExpenseToDelete(null)}>
+                                <Button variant="ghost" size="icon" onClick={() => setExpenseToDelete(expense)} disabled={isPending}>
+                                    <Trash2 className="h-4 w-4" />
+                                    <span className="sr-only">Delete</span>
+                                </Button>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        This action cannot be undone. This will permanently delete the expense: "{expense.description}".
+                                    </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                    <AlertDialogCancel onClick={() => setExpenseToDelete(null)}>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={handleDeleteExpense}>Delete</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                         )}
                       </TableCell>
                     </TableRow>
                   ))

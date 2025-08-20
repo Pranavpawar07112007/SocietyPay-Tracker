@@ -12,9 +12,12 @@ import {
 import { auth } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 
+const ADMIN_EMAILS = ['pawardee.pawar@gmail.com', 'pranav07112007@gmail.com'];
+
 interface AuthContextType {
   user: User | null;
   loading: boolean;
+  isEditor: boolean;
   signUp: (email: string, pass: string) => Promise<void>;
   signIn: (email: string, pass: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -25,11 +28,13 @@ const AuthContext = React.createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = React.useState<User | null>(null);
   const [loading, setLoading] = React.useState(true);
+  const [isEditor, setIsEditor] = React.useState(false);
   const router = useRouter();
 
   React.useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user);
+      setIsEditor(user ? ADMIN_EMAILS.includes(user.email || '') : false);
       setLoading(false);
     });
 
@@ -75,6 +80,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const value = {
     user,
     loading,
+    isEditor,
     signUp,
     signIn,
     signOut,
