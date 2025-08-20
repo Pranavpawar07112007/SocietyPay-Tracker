@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from 'react';
@@ -5,7 +6,7 @@ import { useState, useEffect, useMemo, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { format, getYear } from 'date-fns';
+import { format, getYear, getMonth } from 'date-fns';
 import { IndianRupee, Trash2, CalendarIcon, PlusCircle, ArrowUpCircle, ArrowDownCircle, AlertCircle } from 'lucide-react';
 
 import { getPayments } from '@/services/firestore';
@@ -58,12 +59,16 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 
 const expenseSchema = z.object({
   description: z.string().min(1, 'Description is required.'),
   amount: z.coerce.number().positive('Amount must be positive.'),
   date: z.date({ required_error: 'An expense date is required.' }),
 });
+
+const ALL_MONTHS = "all-months";
+const ALL_YEARS = "all-years";
 
 export default function Dashboard() {
   const { toast } = useToast();
@@ -73,6 +78,10 @@ export default function Dashboard() {
   const [isPending, startTransition] = useTransition();
   const [isExpenseDialogOpen, setIsExpenseDialogOpen] = useState(false);
   const [expenseToDelete, setExpenseToDelete] = useState<Expense | null>(null);
+
+  const [selectedMonth, setSelectedMonth] = useState<string>(new Date().getMonth().toString());
+  const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString());
+
 
   const expenseForm = useForm<z.infer<typeof expenseSchema>>({
     resolver: zodResolver(expenseSchema),
@@ -117,16 +126,45 @@ export default function Dashboard() {
     }
   }, [isExpenseDialogOpen, expenseForm])
 
+  const filteredData = useMemo(() => {
+    const isAllTime = selectedMonth === ALL_MONTHS && selectedYear === ALL_YEARS;
+    
+    const filteredPayments = payments.filter(p => {
+        if (isAllTime) return true;
+        const paymentDate = new Date(p.date);
+        const monthMatch = selectedMonth === ALL_MONTHS || getMonth(paymentDate).toString() === selectedMonth;
+        const yearMatch = selectedYear === ALL_YEARS || getYear(paymentDate).toString() === selectedYear;
+        return monthMatch && yearMatch;
+    });
+
+    const filteredExpenses = expenses.filter(e => {
+        if (isAllTime) return true;
+        const expenseDate = new Date(e.date);
+        const monthMatch = selectedMonth === ALL_MONTHS || getMonth(expenseDate).toString() === selectedMonth;
+        const yearMatch = selectedYear === ALL_YEARS || getYear(expenseDate).toString() === selectedYear;
+        return monthMatch && yearMatch;
+    });
+
+    return { filteredPayments, filteredExpenses };
+
+  }, [payments, expenses, selectedMonth, selectedYear]);
+
   const { totalCollected, totalExpenses, netBalance } = useMemo(() => {
-    const totalCollected = payments.reduce((sum, p) => sum + p.amount, 0);
-    const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
+    const totalCollected = filteredData.filteredPayments.reduce((sum, p) => sum + p.amount, 0);
+    const totalExpenses = filteredData.filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
     const netBalance = totalCollected - totalExpenses;
     return { totalCollected, totalExpenses, netBalance };
-  }, [payments, expenses]);
+  }, [filteredData]);
   
   const sortedExpenses = useMemo(() => {
-    return [...expenses].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [expenses]);
+    return [...filteredData.filteredExpenses].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [filteredData.filteredExpenses]);
+
+  const availableYears = useMemo(() => {
+    const allDates = [...payments.map(p => p.date), ...expenses.map(e => e.date)];
+    const years = new Set(allDates.map(d => getYear(new Date(d)).toString()));
+    return Array.from(years).sort((a,b) => parseInt(b) - parseInt(a));
+  }, [payments, expenses]);
 
 
   const onExpenseSubmit = (values: z.infer<typeof expenseSchema>) => {
@@ -188,6 +226,35 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row gap-4 justify-between items-center">
+        <h2 className="text-xl font-semibold text-foreground">
+          Financial Overview
+        </h2>
+        <div className="flex gap-4">
+            <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                <SelectTrigger className="w-full sm:w-[180px]">
+                    <SelectValue placeholder="Select Month" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value={ALL_MONTHS}>All Months</SelectItem>
+                    {Array.from({length: 12}, (_, i) => (
+                        <SelectItem key={i} value={i.toString()}>{format(new Date(0, i), 'MMMM')}</SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+            <Select value={selectedYear} onValueChange={setSelectedYear}>
+                <SelectTrigger className="w-full sm:w-[120px]">
+                    <SelectValue placeholder="Select Year" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value={ALL_YEARS}>All Years</SelectItem>
+                    {availableYears.map(year => (
+                        <SelectItem key={year} value={year}>{year}</SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+        </div>
+      </div>
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -381,7 +448,7 @@ export default function Dashboard() {
                   <TableRow>
                     <TableCell colSpan={4} className="h-24 text-center">
                       <AlertCircle className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
-                      No expenses recorded yet.
+                      No expenses recorded for the selected period.
                     </TableCell>
                   </TableRow>
                 )}
@@ -393,3 +460,5 @@ export default function Dashboard() {
     </div>
   );
 }
+
+    
