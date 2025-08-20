@@ -26,7 +26,7 @@ export default function ReceiptPage() {
   const { toast } = useToast();
   const params = useParams();
   const paymentId = params.paymentId as string;
-  const { user, loading: authLoading } = useAuth();
+  const { user, isEditor, loading: authLoading } = useAuth();
   const router = useRouter();
 
   const [payment, setPayment] = React.useState<Payment | null>(null);
@@ -172,16 +172,20 @@ export default function ReceiptPage() {
                             </Link>
                         </Button>
                         <div className="flex flex-col sm:flex-row gap-2">
-                            <Button onClick={handleSendWhatsApp} variant="outline" disabled={isLoading || !!error}>
-                                <WhatsAppIcon />
-                                <span className="ml-2 hidden sm:inline">Send on WhatsApp</span>
-                                <span className="ml-2 sm:hidden">Send</span>
-                            </Button>
-                            <Button onClick={handleDownloadPdf} variant="outline" disabled={isLoading || !!error}>
-                                <FileDown className="mr-2 h-4 w-4" />
-                                <span className='hidden sm:inline'>Download PDF</span>
-                                <span className='sm:hidden'>Download</span>
-                            </Button>
+                            {isEditor && (
+                                <>
+                                    <Button onClick={handleSendWhatsApp} variant="outline" disabled={isLoading || !!error}>
+                                        <WhatsAppIcon />
+                                        <span className="ml-2 hidden sm:inline">Send on WhatsApp</span>
+                                        <span className="ml-2 sm:hidden">Send</span>
+                                    </Button>
+                                    <Button onClick={handleDownloadPdf} variant="outline" disabled={isLoading || !!error}>
+                                        <FileDown className="mr-2 h-4 w-4" />
+                                        <span className='hidden sm:inline'>Download PDF</span>
+                                        <span className='sm:hidden'>Download</span>
+                                    </Button>
+                                </>
+                            )}
                             <Button onClick={handlePrint} disabled={isLoading || !!error}>
                                 <Printer className="mr-2 h-4 w-4" />
                                 <span className='hidden sm:inline'>Print Receipt</span>
@@ -191,9 +195,9 @@ export default function ReceiptPage() {
                     </>
                 ) : (
                    <div className="w-full flex justify-end">
-                     <Button onClick={handleDownloadPdf} variant="outline" disabled={isLoading || !!error}>
-                        <FileDown className="mr-2 h-4 w-4" />
-                        Download PDF
+                     <Button onClick={handlePrint} variant="outline" disabled={isLoading || !!error}>
+                        <Printer className="mr-2 h-4 w-4" />
+                        Print
                     </Button>
                    </div>
                 )}
