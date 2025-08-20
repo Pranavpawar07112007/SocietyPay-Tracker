@@ -78,7 +78,7 @@
     }
     
     .glass-effect {
-      @apply bg-background/60 backdrop-blur-lg border border-solid border-white/20;
+      @apply bg-background/60 backdrop-blur-lg border border-solid border-white/20 text-foreground;
     }
 
     .glass-effect.bg-primary {
@@ -109,6 +109,9 @@
         background-color: hsla(var(--background) / 0.7);
     }
 
+    .light .glass-effect:not([data-variant='link']) {
+        @apply text-black;
+    }
 }
 
 
