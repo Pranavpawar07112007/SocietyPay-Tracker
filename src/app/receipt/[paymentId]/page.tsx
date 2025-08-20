@@ -151,7 +151,7 @@ export default function ReceiptPage() {
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-start p-4 sm:p-8 md:p-12 lg:p-24 bg-background">
+    <main className="flex min-h-screen flex-col items-center justify-start p-4 sm:p-8 md:p-12 lg:p-24 bg-gradient-to-br from-background to-muted/30 dark:from-background dark:to-muted/10 shadow-inner-lg">
         <div className="w-full max-w-2xl">
             <div className="flex justify-between items-center mb-4 print-hide">
                 <Button asChild variant="outline">

@@ -71,7 +71,7 @@ export default function SignUpPage() {
     }
 
     return (
-        <main className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
+        <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-background to-muted/30 dark:from-background dark:to-muted/10 shadow-inner-lg p-4">
             <Card className="w-full max-w-sm shadow-xl">
                 <CardHeader className="text-center">
                     <CardTitle className="text-2xl font-headline">Create an Account</CardTitle>
