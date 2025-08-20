@@ -71,15 +71,52 @@
 
 @layer utilities {
     .glass-card {
-        @apply bg-card/60 backdrop-blur-xl border border-white/10 shadow-lg animate-fade-in-up;
+        @apply bg-card/60 backdrop-blur-2xl border border-white/10 shadow-lg animate-fade-in-up;
     }
     .dark .glass-card {
         background-color: rgba(20, 25, 30, 0.6);
     }
     
     .glass-effect {
-      @apply backdrop-blur-xl border border-solid border-white/20;
+      @apply backdrop-blur-2xl border border-solid border-white/20;
+      position: relative;
+      overflow: hidden;
     }
+
+    .glass-effect:before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        border-radius: inherit;
+        padding: 1px;
+        background: linear-gradient(75deg, hsla(var(--primary) / 0.2), hsla(var(--primary) / 0.0));
+        -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+        -webkit-mask-composite: xor;
+        mask-composite: exclude;
+        pointer-events: none;
+    }
+
+    .glass-effect:hover:before {
+        background: linear-gradient(75deg, hsla(var(--primary) / 0.5), hsla(var(--primary) / 0.1));
+        animation:-glow 2s linear infinite;
+    }
+    
+    @keyframes -glow {
+        0% {
+            background-position:0% 50%
+        }
+        50% {
+            background-position:100% 50%
+        }
+        100% {
+            background-position:0% 50%
+        }
+    }
+
+
     .glass-effect {
         background-color: rgba(255, 255, 255, 0.1);
     }
@@ -150,5 +187,6 @@
     border: 1px solid #e2e8f0;
   }
 }
+
 
 
