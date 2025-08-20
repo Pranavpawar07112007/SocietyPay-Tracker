@@ -36,13 +36,7 @@ export default function ReceiptPage() {
   const receiptRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/sign-in');
-    }
-  }, [user, authLoading, router]);
-
-  React.useEffect(() => {
-    if (!paymentId || !user) return;
+    if (!paymentId) return;
 
     const fetchReceiptData = async () => {
       setIsLoading(true);
@@ -72,7 +66,7 @@ export default function ReceiptPage() {
     };
 
     fetchReceiptData();
-  }, [paymentId, toast, user]);
+  }, [paymentId, toast]);
   
   const handlePrint = () => {
     window.print();
@@ -159,7 +153,7 @@ export default function ReceiptPage() {
     return str.trim().split(' ').map(s => s.charAt(0).toUpperCase() + s.substring(1)).join(' ') + ' Only';
   }
 
-  if (authLoading || !user) {
+  if (authLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -171,26 +165,37 @@ export default function ReceiptPage() {
     <main className="flex min-h-screen flex-col items-center justify-start p-4 sm:p-8 md:p-12 lg:p-24 bg-background">
         <div className="w-full max-w-2xl">
             <div className="flex justify-between items-center mb-4 print-hide">
-                <Button asChild variant="outline">
-                    <Link href="/history">
-                        <ArrowLeft className="mr-2 h-4 w-4" />
-                        Back to History
-                    </Link>
-                </Button>
-                <div className="flex gap-2">
-                    <Button onClick={handleSendWhatsApp} variant="outline" disabled={isLoading || !!error}>
-                        <WhatsAppIcon />
-                        <span className="ml-2">Send on WhatsApp</span>
-                    </Button>
-                    <Button onClick={handleDownloadPdf} variant="outline" disabled={isLoading || !!error}>
+                {user ? (
+                    <>
+                        <Button asChild variant="outline">
+                            <Link href="/history">
+                                <ArrowLeft className="mr-2 h-4 w-4" />
+                                Back to History
+                            </Link>
+                        </Button>
+                        <div className="flex gap-2">
+                            <Button onClick={handleSendWhatsApp} variant="outline" disabled={isLoading || !!error}>
+                                <WhatsAppIcon />
+                                <span className="ml-2">Send on WhatsApp</span>
+                            </Button>
+                            <Button onClick={handleDownloadPdf} variant="outline" disabled={isLoading || !!error}>
+                                <FileDown className="mr-2 h-4 w-4" />
+                                Download PDF
+                            </Button>
+                            <Button onClick={handlePrint} disabled={isLoading || !!error}>
+                                <Printer className="mr-2 h-4 w-4" />
+                                Print Receipt
+                            </Button>
+                        </div>
+                    </>
+                ) : (
+                   <div className="w-full flex justify-end">
+                     <Button onClick={handleDownloadPdf} variant="outline" disabled={isLoading || !!error}>
                         <FileDown className="mr-2 h-4 w-4" />
                         Download PDF
                     </Button>
-                    <Button onClick={handlePrint} disabled={isLoading || !!error}>
-                        <Printer className="mr-2 h-4 w-4" />
-                        Print Receipt
-                    </Button>
-                </div>
+                   </div>
+                )}
             </div>
 
             <Card className="w-full card-print glass-card" ref={receiptRef}>
@@ -286,5 +291,3 @@ export default function ReceiptPage() {
     </main>
   );
 }
-
-    
