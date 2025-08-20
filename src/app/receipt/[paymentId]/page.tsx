@@ -16,6 +16,12 @@ import { useAuth } from '@/hooks/use-auth';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
+const WhatsAppIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.894 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 4.315 1.919 6.066l-1.417 5.171 5.253-1.378z" />
+    </svg>
+)
+
 export default function ReceiptPage() {
   const { toast } = useToast();
   const params = useParams();
@@ -70,6 +76,17 @@ export default function ReceiptPage() {
   
   const handlePrint = () => {
     window.print();
+  };
+  
+  const handleSendWhatsApp = () => {
+    if (!member || !payment) return;
+
+    const receiptUrl = window.location.href;
+    const message = `Dear ${member.name},\n\nPlease find your maintenance payment receipt for ${format(new Date(payment.date), 'MMMM yyyy')} here:\n${receiptUrl}\n\nThank you,\nAroma Residency`;
+    
+    const whatsappUrl = `https://wa.me/91${member.mobileNumber}?text=${encodeURIComponent(message)}`;
+    
+    window.open(whatsappUrl, '_blank');
   };
 
   const handleDownloadPdf = async () => {
@@ -161,6 +178,10 @@ export default function ReceiptPage() {
                     </Link>
                 </Button>
                 <div className="flex gap-2">
+                    <Button onClick={handleSendWhatsApp} variant="outline" disabled={isLoading || !!error}>
+                        <WhatsAppIcon />
+                        <span className="ml-2">Send on WhatsApp</span>
+                    </Button>
                     <Button onClick={handleDownloadPdf} variant="outline" disabled={isLoading || !!error}>
                         <FileDown className="mr-2 h-4 w-4" />
                         Download PDF
@@ -265,3 +286,5 @@ export default function ReceiptPage() {
     </main>
   );
 }
+
+    
