@@ -73,8 +73,7 @@ const expenseSchema = z.object({
 const ALL_MONTHS = "all-months";
 const ALL_YEARS = "all-years";
 
-// This is the opening balance as of the start of tracking in this app.
-const OPENING_BALANCE = 67689.94;
+const HISTORICAL_NET_BALANCE = 67689.94;
 
 export default function Dashboard() {
   const { toast } = useToast();
@@ -158,12 +157,21 @@ export default function Dashboard() {
 
   const { totalCollected, totalExpenses, netBalance } = useMemo(() => {
     const isAllTime = selectedMonth === ALL_MONTHS && selectedYear === ALL_YEARS;
-    const collectionsFromPayments = filteredData.filteredPayments.reduce((sum, p) => sum + p.amount, 0);
-    const totalCollected = collectionsFromPayments + (isAllTime ? OPENING_BALANCE : 0);
-    const totalExpenses = filteredData.filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
-    const netBalance = totalCollected - totalExpenses;
-    return { totalCollected, totalExpenses, netBalance };
-  }, [filteredData, selectedMonth, selectedYear]);
+    const totalExpensesInFilter = filteredData.filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
+
+    if (isAllTime) {
+        // For the all-time view, the net balance is fixed to the historical value.
+        const allTimeExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
+        const netBalance = HISTORICAL_NET_BALANCE;
+        const totalCollected = netBalance + allTimeExpenses;
+        return { totalCollected, totalExpenses: allTimeExpenses, netBalance };
+    } else {
+        // For specific date ranges, calculate as usual.
+        const totalCollected = filteredData.filteredPayments.reduce((sum, p) => sum + p.amount, 0);
+        const netBalance = totalCollected - totalExpensesInFilter;
+        return { totalCollected, totalExpenses: totalExpensesInFilter, netBalance };
+    }
+  }, [filteredData, expenses, selectedMonth, selectedYear]);
   
   const sortedExpenses = useMemo(() => {
     return [...filteredData.filteredExpenses].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
