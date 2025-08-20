@@ -65,7 +65,9 @@ import { useAuth } from '@/hooks/use-auth';
 const expenseSchema = z.object({
   description: z.string().min(1, 'Description is required.'),
   amount: z.coerce.number().positive('Amount must be positive.'),
-  date: z.date({ required_error: 'An expense date is required.' }),
+  date: z.string().refine((val) => !isNaN(Date.parse(val)), {
+    message: "Please enter a valid date in YYYY-MM-DD format.",
+  }),
 });
 
 const ALL_MONTHS = "all-months";
@@ -90,7 +92,7 @@ export default function Dashboard() {
     defaultValues: {
       description: '',
       amount: '' as any,
-      date: new Date(),
+      date: format(new Date(), 'yyyy-MM-dd'),
     },
   });
 
@@ -123,7 +125,7 @@ export default function Dashboard() {
         expenseForm.reset({
             description: '',
             amount: '' as any,
-            date: new Date(),
+            date: format(new Date(), 'yyyy-MM-dd'),
         });
     }
   }, [isExpenseDialogOpen, expenseForm])
@@ -175,7 +177,7 @@ export default function Dashboard() {
       try {
         const expenseData = {
           ...values,
-          date: values.date.toISOString(),
+          date: new Date(values.date).toISOString(),
         };
         const newExpense = await addExpense(expenseData);
         setExpenses((prev) => [...prev, newExpense]);
@@ -349,42 +351,11 @@ export default function Dashboard() {
                                 control={expenseForm.control}
                                 name="date"
                                 render={({ field }) => (
-                                    <FormItem className="flex flex-col">
+                                    <FormItem>
                                     <FormLabel>Expense Date</FormLabel>
-                                    <Popover>
-                                        <PopoverTrigger asChild>
-                                        <FormControl>
-                                            <Button
-                                            variant={"outline"}
-                                            className={cn(
-                                                "w-full pl-3 text-left font-normal",
-                                                !field.value && "text-muted-foreground"
-                                            )}
-                                            >
-                                            {field.value ? (
-                                                format(field.value, "PPP")
-                                            ) : (
-                                                <span>Pick a date</span>
-                                            )}
-                                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                            </Button>
-                                        </FormControl>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-auto p-0" align="start">
-                                        <Calendar
-                                            mode="single"
-                                            selected={field.value}
-                                            onSelect={field.onChange}
-                                            captionLayout="dropdown-buttons"
-                                            fromYear={getYear(new Date()) - 5}
-                                            toYear={getYear(new Date())}
-                                            disabled={(date) =>
-                                            date > new Date() || date < new Date("2020-01-01")
-                                            }
-                                            initialFocus
-                                        />
-                                        </PopoverContent>
-                                    </Popover>
+                                    <FormControl>
+                                        <Input placeholder="YYYY-MM-DD" type="date" {...field} />
+                                    </FormControl>
                                     <FormMessage />
                                     </FormItem>
                                 )}
@@ -467,5 +438,7 @@ export default function Dashboard() {
     </div>
   );
 }
+
+    
 
     
