@@ -73,7 +73,7 @@ const expenseSchema = z.object({
 const ALL_MONTHS = "all-months";
 const ALL_YEARS = "all-years";
 
-const OPENING_BALANCE = 0;
+const OPENING_BALANCE = 33348.64;
 
 export default function Dashboard() {
   const { toast } = useToast();
@@ -455,3 +455,5 @@ export default function Dashboard() {
     </div>
   );
 }
+
+    
