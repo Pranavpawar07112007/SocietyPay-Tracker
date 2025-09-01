@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 
 import { Button } from '@/components/ui/button';
 import PaymentTracker from '@/components/payment-tracker';
-import { History, LayoutDashboard, LogOut, Loader2 } from 'lucide-react';
+import { History, LayoutDashboard, LogOut } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { ThemeToggle } from '@/components/theme-toggle';
 import SplashScreen from '@/components/splash-screen';

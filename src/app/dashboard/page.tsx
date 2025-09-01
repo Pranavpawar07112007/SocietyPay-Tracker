@@ -4,7 +4,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Home, History, Printer, Loader2 } from 'lucide-react';
+import { Home, History, Printer } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
