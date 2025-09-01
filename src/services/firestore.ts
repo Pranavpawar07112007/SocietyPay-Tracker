@@ -1,7 +1,7 @@
 
 'use server';
 import { db } from '@/lib/firebase';
-import { Member, Payment, Expense, OtherIncome } from '@/types';
+import { Member, Payment, Expense } from '@/types';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where, writeBatch, getDoc } from 'firebase/firestore';
 
 export async function getMembers(): Promise<Member[]> {
@@ -101,21 +101,4 @@ export async function getPaymentsForYear(year: number): Promise<Payment[]> {
         .map(doc => ({ id: doc.id, ...doc.data() } as Payment))
         .filter(p => p.date && new Date(p.date).getFullYear() === year);
     return paymentList;
-}
-
-export async function getOtherIncomes(): Promise<OtherIncome[]> {
-    const incomesCol = collection(db, 'otherIncomes');
-    const incomeSnapshot = await getDocs(incomesCol);
-    const incomeList = incomeSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as OtherIncome));
-    return incomeList;
-}
-
-export async function addOtherIncome(income: Omit<OtherIncome, 'id'>): Promise<OtherIncome> {
-    const docRef = await addDoc(collection(db, 'otherIncomes'), income);
-    return { id: docRef.id, ...income };
-}
-
-export async function deleteOtherIncome(id: string): Promise<void> {
-    const incomeDoc = doc(db, 'otherIncomes', id);
-    await deleteDoc(incomeDoc);
 }
