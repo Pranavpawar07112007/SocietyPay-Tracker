@@ -11,6 +11,7 @@ import { History, LayoutDashboard, LogOut, Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { ThemeToggle } from '@/components/theme-toggle';
 import SplashScreen from '@/components/splash-screen';
+import { Chatbot } from '@/components/chatbot';
 
 export default function Home() {
     const { user, signOut, loading } = useAuth();
@@ -27,6 +28,7 @@ export default function Home() {
     }
 
   return (
+    <>
     <main className="flex min-h-screen flex-col items-center justify-start p-2 sm:p-4 md:p-8 lg:p-12 bg-background">
       <div className="w-full max-w-5xl mb-4 flex flex-col sm:flex-row justify-end items-stretch sm:items-center gap-2">
         <ThemeToggle />
@@ -49,5 +51,7 @@ export default function Home() {
       </div>
       <PaymentTracker />
     </main>
+    <Chatbot />
+    </>
   );
 }
