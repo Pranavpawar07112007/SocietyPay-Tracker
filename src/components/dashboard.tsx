@@ -7,11 +7,11 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { format, getYear, getMonth } from 'date-fns';
-import { IndianRupee, Trash2, PlusCircle, ArrowUpCircle, ArrowDownCircle, AlertCircle, Users } from 'lucide-react';
+import { IndianRupee, Trash2, PlusCircle, ArrowUpCircle, ArrowDownCircle, AlertCircle, Users, HandCoins } from 'lucide-react';
 
-import { getPayments, getMembers as getAllMembers } from '@/services/firestore';
+import { getPayments, getMembers as getAllMembers, getOtherIncomes, addOtherIncome, deleteOtherIncome } from '@/services/firestore';
 import { addExpense, getExpenses, deleteExpense } from '@/services/firestore';
-import type { Payment, Expense, Member } from '@/types';
+import type { Payment, Expense, Member, OtherIncome } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -63,7 +63,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { useAuth } from '@/hooks/use-auth';
 
-const expenseSchema = z.object({
+const commonSchema = z.object({
   description: z.string().min(1, 'Description is required.'),
   amount: z.coerce.number().positive('Amount must be positive.'),
   date: z.string().refine((val) => !isNaN(Date.parse(val)), {
@@ -81,18 +81,20 @@ export default function Dashboard() {
   const { isEditor } = useAuth();
   const [payments, setPayments] = useState<Payment[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [otherIncomes, setOtherIncomes] = useState<OtherIncome[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isPending, startTransition] = useTransition();
   const [isExpenseDialogOpen, setIsExpenseDialogOpen] = useState(false);
+  const [isIncomeDialogOpen, setIsIncomeDialogOpen] = useState(false);
   const [expenseToDelete, setExpenseToDelete] = useState<Expense | null>(null);
+  const [incomeToDelete, setIncomeToDelete] = useState<OtherIncome | null>(null);
 
   const [selectedMonth, setSelectedMonth] = useState<string>(new Date().getMonth().toString());
   const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString());
 
-
-  const expenseForm = useForm<z.infer<typeof expenseSchema>>({
-    resolver: zodResolver(expenseSchema),
+  const form = useForm<z.infer<typeof commonSchema>>({
+    resolver: zodResolver(commonSchema),
     defaultValues: {
       description: '',
       amount: '' as any,
@@ -104,14 +106,16 @@ export default function Dashboard() {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const [paymentsData, expensesData, membersData] = await Promise.all([
+        const [paymentsData, expensesData, membersData, incomesData] = await Promise.all([
           getPayments(),
           getExpenses(),
           getAllMembers(),
+          getOtherIncomes(),
         ]);
         setPayments(paymentsData);
         setExpenses(expensesData);
         setMembers(membersData);
+        setOtherIncomes(incomesData);
       } catch (error) {
         console.error('Failed to load dashboard data', error);
         toast({
@@ -127,41 +131,40 @@ export default function Dashboard() {
   }, [toast]);
   
   useEffect(() => {
-    if (!isExpenseDialogOpen) {
-        expenseForm.reset({
+    if (!isExpenseDialogOpen && !isIncomeDialogOpen) {
+        form.reset({
             description: '',
             amount: '' as any,
             date: format(new Date(), 'yyyy-MM-dd'),
         });
     }
-  }, [isExpenseDialogOpen, expenseForm])
+  }, [isExpenseDialogOpen, isIncomeDialogOpen, form])
 
   const filteredData = useMemo(() => {
     const isAllTime = selectedMonth === ALL_MONTHS && selectedYear === ALL_YEARS;
     
-    const filteredPayments = payments.filter(p => {
-        if (isAllTime) return true;
-        const paymentDate = new Date(p.date);
-        const monthMatch = selectedMonth === ALL_MONTHS || getMonth(paymentDate).toString() === selectedMonth;
-        const yearMatch = selectedYear === ALL_YEARS || getYear(paymentDate).toString() === selectedYear;
-        return monthMatch && yearMatch;
-    });
+    const filterByDate = (items: (Payment | Expense | OtherIncome)[]) => {
+        return items.filter(item => {
+            if (isAllTime) return true;
+            const itemDate = new Date(item.date);
+            const monthMatch = selectedMonth === ALL_MONTHS || getMonth(itemDate).toString() === selectedMonth;
+            const yearMatch = selectedYear === ALL_YEARS || getYear(itemDate).toString() === selectedYear;
+            return monthMatch && yearMatch;
+        });
+    }
 
-    const filteredExpenses = expenses.filter(e => {
-        if (isAllTime) return true;
-        const expenseDate = new Date(e.date);
-        const monthMatch = selectedMonth === ALL_MONTHS || getMonth(expenseDate).toString() === selectedMonth;
-        const yearMatch = selectedYear === ALL_YEARS || getYear(expenseDate).toString() === selectedYear;
-        return monthMatch && yearMatch;
-    });
+    return { 
+        filteredPayments: filterByDate(payments) as Payment[], 
+        filteredExpenses: filterByDate(expenses) as Expense[],
+        filteredIncomes: filterByDate(otherIncomes) as OtherIncome[],
+    };
 
-    return { filteredPayments, filteredExpenses };
+  }, [payments, expenses, otherIncomes, selectedMonth, selectedYear]);
 
-  }, [payments, expenses, selectedMonth, selectedYear]);
-
-  const { totalCollected, totalExpenses, netBalance, openingBalance, paidMembers } = useMemo(() => {
+  const { totalCollected, totalExpenses, totalOtherIncome, netBalance, openingBalance, paidMembers } = useMemo(() => {
     const totalExpensesInFilter = filteredData.filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
     const totalCollectedInFilter = filteredData.filteredPayments.reduce((sum, p) => sum + p.amount, 0);
+    const totalOtherIncomeInFilter = filteredData.filteredIncomes.reduce((sum, i) => sum + i.amount, 0);
     
     const isAllTime = selectedMonth === ALL_MONTHS && selectedYear === ALL_YEARS;
     
@@ -170,7 +173,7 @@ export default function Dashboard() {
       currentOpeningBalance = OPENING_BALANCE;
     }
 
-    const totalCollected = totalCollectedInFilter + currentOpeningBalance;
+    const totalCollected = totalCollectedInFilter + totalOtherIncomeInFilter + currentOpeningBalance;
     const netBalance = totalCollected - totalExpensesInFilter;
     
     const paidMemberIds = new Set(filteredData.filteredPayments.map(p => p.memberId));
@@ -179,12 +182,23 @@ export default function Dashboard() {
         .filter((m): m is Member => !!m)
         .sort((a,b) => a.name.localeCompare(b.name));
 
-    return { totalCollected, totalExpenses: totalExpensesInFilter, netBalance, openingBalance: currentOpeningBalance, paidMembers };
+    return { 
+        totalCollected, 
+        totalExpenses: totalExpensesInFilter,
+        totalOtherIncome: totalOtherIncomeInFilter,
+        netBalance, 
+        openingBalance: currentOpeningBalance, 
+        paidMembers 
+    };
   }, [filteredData, selectedMonth, selectedYear, members]);
   
   const sortedExpenses = useMemo(() => {
     return [...filteredData.filteredExpenses].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [filteredData.filteredExpenses]);
+
+  const sortedIncomes = useMemo(() => {
+    return [...filteredData.filteredIncomes].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [filteredData.filteredIncomes]);
 
   const availableYears = useMemo(() => {
     const allDates = [...payments.map(p => p.date), ...expenses.map(e => e.date)];
@@ -193,15 +207,14 @@ export default function Dashboard() {
   }, [payments, expenses]);
 
 
-  const onExpenseSubmit = (values: z.infer<typeof expenseSchema>) => {
+  const onExpenseSubmit = (values: z.infer<typeof commonSchema>) => {
     if (!isEditor) return;
     startTransition(async () => {
       try {
-        const expenseData = {
+        const newExpense = await addExpense({
           ...values,
           date: new Date(values.date).toISOString(),
-        };
-        const newExpense = await addExpense(expenseData);
+        });
         setExpenses((prev) => [...prev, newExpense]);
         toast({
           title: 'Expense Recorded',
@@ -216,6 +229,32 @@ export default function Dashboard() {
         });
       } finally {
         setIsExpenseDialogOpen(false);
+      }
+    });
+  };
+
+  const onIncomeSubmit = (values: z.infer<typeof commonSchema>) => {
+    if (!isEditor) return;
+    startTransition(async () => {
+      try {
+        const newIncome = await addOtherIncome({
+          ...values,
+          date: new Date(values.date).toISOString(),
+        });
+        setOtherIncomes((prev) => [...prev, newIncome]);
+        toast({
+          title: 'Income Recorded',
+          description: 'The new income has been successfully recorded.',
+        });
+      } catch (error) {
+        console.error('Failed to save income', error);
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: 'Could not save the income. Please try again.',
+        });
+      } finally {
+        setIsIncomeDialogOpen(false);
       }
     });
   };
@@ -240,6 +279,30 @@ export default function Dashboard() {
             });
         } finally {
             setExpenseToDelete(null);
+        }
+    });
+  };
+  
+  const handleDeleteIncome = () => {
+    if (!incomeToDelete || !isEditor) return;
+
+    startTransition(async () => {
+        try {
+            await deleteOtherIncome(incomeToDelete.id);
+            setOtherIncomes(prev => prev.filter(i => i.id !== incomeToDelete.id));
+            toast({
+                title: "Income Deleted",
+                description: "The income record has been successfully deleted."
+            });
+        } catch (error) {
+            console.error("Failed to delete income", error);
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Could not delete income. Please try again."
+            });
+        } finally {
+            setIncomeToDelete(null);
         }
     });
   };
@@ -282,7 +345,7 @@ export default function Dashboard() {
             </Select>
         </div>
       </div>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
@@ -314,9 +377,9 @@ export default function Dashboard() {
                 </DropdownMenu>
             </div>
             }
-            {openingBalance > 0 && (
+            {(openingBalance > 0 || totalOtherIncome > 0) && (
                  <p className="text-xs text-muted-foreground">
-                    (Including Opening Balance)
+                    Incl. Opening Balance & Other Income
                 </p>
             )}
           </CardContent>
@@ -332,6 +395,17 @@ export default function Dashboard() {
             {isLoading ? <Skeleton className="h-8 w-3/4" /> : <div className="text-2xl font-bold">{formatCurrency(totalExpenses)}</div>}
           </CardContent>
         </Card>
+         <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Other Income
+            </CardTitle>
+            <HandCoins className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {isLoading ? <Skeleton className="h-8 w-3/4" /> : <div className="text-2xl font-bold">{formatCurrency(totalOtherIncome)}</div>}
+          </CardContent>
+        </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Net Balance</CardTitle>
@@ -342,6 +416,149 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      <div className="grid gap-6 md:grid-cols-2">
+      <Card>
+        <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <CardTitle>Other Income</CardTitle>
+            <p className="text-sm text-muted-foreground">
+                Track miscellaneous income like bank interest.
+            </p>
+          </div>
+          {isEditor && (
+            <Dialog open={isIncomeDialogOpen} onOpenChange={setIsIncomeDialogOpen}>
+                <DialogTrigger asChild>
+                    <Button className="print-hide w-full sm:w-auto">
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Record Income
+                    </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[425px]">
+                    <Form {...form}>
+                        <form onSubmit={form.handleSubmit(onIncomeSubmit)} className="space-y-8">
+                        <DialogHeader>
+                            <DialogTitle>Record New Income</DialogTitle>
+                            <DialogDescription>
+                                Enter the details of the income.
+                            </DialogDescription>
+                        </DialogHeader>
+                        
+                        <div className="grid gap-4 py-4">
+                            <FormField
+                                control={form.control}
+                                name="description"
+                                render={({ field }) => (
+                                    <FormItem>
+                                    <FormLabel>Description</FormLabel>
+                                    <FormControl>
+                                        <Input placeholder="e.g. Bank Interest" {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                             <FormField
+                                control={form.control}
+                                name="amount"
+                                render={({ field }) => (
+                                    <FormItem>
+                                    <FormLabel>Amount (₹)</FormLabel>
+                                    <FormControl>
+                                        <Input placeholder="e.g. 500" type="number" step="0.01" {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="date"
+                                render={({ field }) => (
+                                    <FormItem>
+                                    <FormLabel>Income Date</FormLabel>
+                                    <FormControl>
+                                        <Input placeholder="YYYY-MM-DD" type="date" {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
+                        <DialogFooter>
+                            <Button type="button" variant="ghost" onClick={() => setIsIncomeDialogOpen(false)} disabled={isPending}>Cancel</Button>
+                            <Button type="submit" disabled={isPending || !isEditor}>Save Income</Button>
+                        </DialogFooter>
+                        </form>
+                    </Form>
+                </DialogContent>
+              </Dialog>
+          )}
+        </CardHeader>
+        <CardContent>
+          <div className="rounded-md border table-print overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Description</TableHead>
+                  <TableHead>Amount</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead className="text-right print-hide">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                    Array.from({ length: 3 }).map((_, i) => (
+                        <TableRow key={i}>
+                            <TableCell><Skeleton className="h-5 w-32 sm:w-48" /></TableCell>
+                            <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                            <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                            <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto rounded-full" /></TableCell>
+                        </TableRow>
+                    ))
+                ) : sortedIncomes.length > 0 ? (
+                  sortedIncomes.map((income) => (
+                    <TableRow key={income.id}>
+                      <TableCell className="font-medium min-w-[150px]">{income.description}</TableCell>
+                      <TableCell>{formatCurrency(income.amount)}</TableCell>
+                      <TableCell>{format(new Date(income.date), 'PPP')}</TableCell>
+                      <TableCell className="text-right print-hide">
+                         {isEditor && (
+                            <AlertDialog open={incomeToDelete?.id === income.id} onOpenChange={(open) => !open && setIncomeToDelete(null)}>
+                                <Button variant="ghost" size="icon" onClick={() => setIncomeToDelete(income)} disabled={isPending}>
+                                    <Trash2 className="h-4 w-4" />
+                                    <span className="sr-only">Delete</span>
+                                </Button>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        This action cannot be undone. This will permanently delete the income: "{income.description}".
+                                    </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                    <AlertDialogCancel onClick={() => setIncomeToDelete(null)}>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={handleDeleteIncome}>Delete</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                         )}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={4} className="h-24 text-center">
+                      <AlertCircle className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
+                      No income recorded for the selected period.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
       
       <Card>
         <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -360,8 +577,8 @@ export default function Dashboard() {
                     </Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-[425px]">
-                    <Form {...expenseForm}>
-                        <form onSubmit={expenseForm.handleSubmit(onExpenseSubmit)} className="space-y-8">
+                    <Form {...form}>
+                        <form onSubmit={form.handleSubmit(onExpenseSubmit)} className="space-y-8">
                         <DialogHeader>
                             <DialogTitle>Record New Expense</DialogTitle>
                             <DialogDescription>
@@ -371,7 +588,7 @@ export default function Dashboard() {
                         
                         <div className="grid gap-4 py-4">
                             <FormField
-                                control={expenseForm.control}
+                                control={form.control}
                                 name="description"
                                 render={({ field }) => (
                                     <FormItem>
@@ -384,7 +601,7 @@ export default function Dashboard() {
                                 )}
                             />
                              <FormField
-                                control={expenseForm.control}
+                                control={form.control}
                                 name="amount"
                                 render={({ field }) => (
                                     <FormItem>
@@ -397,7 +614,7 @@ export default function Dashboard() {
                                 )}
                             />
                             <FormField
-                                control={expenseForm.control}
+                                control={form.control}
                                 name="date"
                                 render={({ field }) => (
                                     <FormItem>
@@ -484,6 +701,7 @@ export default function Dashboard() {
           </div>
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }

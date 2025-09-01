@@ -22,3 +22,10 @@ export interface Expense {
     amount: number;
     date: string; // Stored as ISO string
 }
+
+export interface OtherIncome {
+    id: string;
+    description: string;
+    amount: number;
+    date: string; // Stored as ISO string
+}
