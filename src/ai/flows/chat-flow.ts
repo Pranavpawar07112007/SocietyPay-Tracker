@@ -7,7 +7,6 @@
  */
 
 import {ai} from '@/ai/genkit';
-import { generate } from 'genkit';
 import {
   ChatInput,
   ChatInputSchema,
@@ -32,7 +31,7 @@ const chatFlow = ai.defineFlow(
       content: [{text: msg.content}],
     }));
 
-    const response = await generate({
+    const response = await ai.generate({
       model: 'googleai/gemini-2.0-flash',
       prompt: input.message,
       history: history,
@@ -42,6 +41,6 @@ const chatFlow = ai.defineFlow(
       },
     });
 
-    return response.text();
+    return response.text;
   }
 );
