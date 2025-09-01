@@ -1,8 +1,10 @@
 
 'use server';
 import { db } from '@/lib/firebase';
-import { Member, Payment, Expense } from '@/types';
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where, writeBatch, getDoc } from 'firebase/firestore';
+import { Member, Payment, Expense, Financials } from '@/types';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where, writeBatch, getDoc, setDoc } from 'firebase/firestore';
+
+const FINANCIALS_DOC_ID = 'singleton';
 
 export async function getMembers(): Promise<Member[]> {
     const membersCol = collection(db, 'members');
@@ -101,4 +103,21 @@ export async function getPaymentsForYear(year: number): Promise<Payment[]> {
         .map(doc => ({ id: doc.id, ...doc.data() } as Payment))
         .filter(p => p.date && new Date(p.date).getFullYear() === year);
     return paymentList;
+}
+
+export async function getFinancials(): Promise<Financials> {
+    const docRef = doc(db, 'financials', FINANCIALS_DOC_ID);
+    const docSnap = await getDoc(docRef);
+
+    if (docSnap.exists()) {
+        return { id: docSnap.id, ...docSnap.data() } as Financials;
+    } else {
+        // Return a default object if it doesn't exist
+        return { id: FINANCIALS_DOC_ID, openingBalance: 0 };
+    }
+}
+
+export async function updateFinancials(data: Partial<Financials>): Promise<void> {
+    const docRef = doc(db, 'financials', FINANCIALS_DOC_ID);
+    await setDoc(docRef, data, { merge: true });
 }

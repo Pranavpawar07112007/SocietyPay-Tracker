@@ -22,3 +22,8 @@ export interface Expense {
     amount: number;
     date: string; // Stored as ISO string
 }
+
+export interface Financials {
+    id: string;
+    openingBalance: number;
+}
