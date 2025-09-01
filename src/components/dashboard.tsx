@@ -7,11 +7,11 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { format, getYear, getMonth } from 'date-fns';
-import { IndianRupee, Trash2, CalendarIcon, PlusCircle, ArrowUpCircle, ArrowDownCircle, AlertCircle, Banknote } from 'lucide-react';
+import { IndianRupee, Trash2, CalendarIcon, PlusCircle, ArrowUpCircle, ArrowDownCircle, AlertCircle, Banknote, Users } from 'lucide-react';
 
-import { getPayments } from '@/services/firestore';
+import { getPayments, getMembers as getAllMembers } from '@/services/firestore';
 import { addExpense, getExpenses, deleteExpense } from '@/services/firestore';
-import type { Payment, Expense } from '@/types';
+import type { Payment, Expense, Member } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,6 +25,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -80,6 +88,7 @@ export default function Dashboard() {
   const { isEditor } = useAuth();
   const [payments, setPayments] = useState<Payment[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [members, setMembers] = useState<Member[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isPending, startTransition] = useTransition();
   const [isExpenseDialogOpen, setIsExpenseDialogOpen] = useState(false);
@@ -102,12 +111,14 @@ export default function Dashboard() {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const [paymentsData, expensesData] = await Promise.all([
+        const [paymentsData, expensesData, membersData] = await Promise.all([
           getPayments(),
           getExpenses(),
+          getAllMembers(),
         ]);
         setPayments(paymentsData);
         setExpenses(expensesData);
+        setMembers(membersData);
       } catch (error) {
         console.error('Failed to load dashboard data', error);
         toast({
@@ -155,7 +166,7 @@ export default function Dashboard() {
 
   }, [payments, expenses, selectedMonth, selectedYear]);
 
-  const { totalCollected, totalExpenses, netBalance, openingBalance } = useMemo(() => {
+  const { totalCollected, totalExpenses, netBalance, openingBalance, paidMembers } = useMemo(() => {
     const totalExpensesInFilter = filteredData.filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
     const totalCollectedInFilter = filteredData.filteredPayments.reduce((sum, p) => sum + p.amount, 0);
     
@@ -169,8 +180,13 @@ export default function Dashboard() {
     const totalCollected = totalCollectedInFilter + openingBalance;
     const netBalance = totalCollected - totalExpensesInFilter;
 
-    return { totalCollected, totalExpenses: totalExpensesInFilter, netBalance, openingBalance };
-  }, [filteredData, selectedMonth, selectedYear]);
+    const paidMembers = filteredData.filteredPayments
+        .map(p => members.find(m => m.id === p.memberId))
+        .filter((m): m is Member => !!m)
+        .sort((a,b) => a.name.localeCompare(b.name));
+
+    return { totalCollected, totalExpenses: totalExpensesInFilter, netBalance, openingBalance, paidMembers };
+  }, [filteredData, selectedMonth, selectedYear, members]);
   
   const sortedExpenses = useMemo(() => {
     return [...filteredData.filteredExpenses].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -281,7 +297,29 @@ export default function Dashboard() {
             <ArrowUpCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            {isLoading ? <Skeleton className="h-8 w-3/4" /> : <div className="text-2xl font-bold">{formatCurrency(totalCollected)}</div>}
+            {isLoading ? <Skeleton className="h-8 w-3/4" /> : 
+            <div className="flex items-center justify-between">
+                <div className="text-2xl font-bold">{formatCurrency(totalCollected)}</div>
+                 <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" disabled={paidMembers.length === 0}>
+                            <Users className="h-5 w-5" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                         <DropdownMenuLabel>Paid Members ({paidMembers.length})</DropdownMenuLabel>
+                         <DropdownMenuSeparator />
+                         <div className="max-h-60 overflow-y-auto">
+                            {paidMembers.map(member => (
+                                <DropdownMenuItem key={member.id}>
+                                    {member.name} ({member.flatNumber})
+                                </DropdownMenuItem>
+                            ))}
+                         </div>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </div>
+            }
             {openingBalance > 0 && (
                  <p className="text-xs text-muted-foreground">
                     (Including Opening Balance)
@@ -455,6 +493,3 @@ export default function Dashboard() {
     </div>
   );
 }
-
-    
-    
