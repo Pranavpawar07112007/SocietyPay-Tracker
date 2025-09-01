@@ -179,9 +179,10 @@ export default function Dashboard() {
 
     const totalCollected = totalCollectedInFilter + openingBalance;
     const netBalance = totalCollected - totalExpensesInFilter;
-
-    const paidMembers = filteredData.filteredPayments
-        .map(p => members.find(m => m.id === p.memberId))
+    
+    const paidMemberIds = new Set(filteredData.filteredPayments.map(p => p.memberId));
+    const paidMembers = Array.from(paidMemberIds)
+        .map(memberId => members.find(m => m.id === memberId))
         .filter((m): m is Member => !!m)
         .sort((a,b) => a.name.localeCompare(b.name));
 
