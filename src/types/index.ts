@@ -1,4 +1,3 @@
-
 export interface Member {
   id: string;
   name: string;
@@ -21,9 +20,4 @@ export interface Expense {
     description: string;
     amount: number;
     date: string; // Stored as ISO string
-}
-
-export interface Financials {
-    id: string;
-    openingBalance: number;
 }

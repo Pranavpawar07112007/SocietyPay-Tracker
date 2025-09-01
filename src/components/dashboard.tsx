@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from 'react';
@@ -7,10 +6,10 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { format, getYear, getMonth } from 'date-fns';
-import { IndianRupee, Trash2, PlusCircle, ArrowUpCircle, ArrowDownCircle, AlertCircle, Banknote, Pencil } from 'lucide-react';
+import { IndianRupee, Trash2, PlusCircle, ArrowUpCircle, ArrowDownCircle, AlertCircle } from 'lucide-react';
 
-import { getPayments, addExpense, getExpenses, deleteExpense, getFinancials, updateFinancials } from '@/services/firestore';
-import type { Payment, Expense, Member, Financials } from '@/types';
+import { getPayments, addExpense, getExpenses, deleteExpense } from '@/services/firestore';
+import type { Payment, Expense, Member } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -62,10 +61,6 @@ const expenseSchema = z.object({
   }),
 });
 
-const financialsSchema = z.object({
-    openingBalance: z.coerce.number().nonnegative('Opening balance must be a positive number.'),
-});
-
 const ALL_MONTHS = "all-months";
 const ALL_YEARS = "all-years";
 
@@ -74,17 +69,15 @@ export default function Dashboard() {
   const { isEditor } = useAuth();
   const [payments, setPayments] = useState<Payment[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [financials, setFinancials] = useState<Financials | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isPending, startTransition] = useTransition();
   const [isExpenseDialogOpen, setIsExpenseDialogOpen] = useState(false);
-  const [isFinancialsDialogOpen, setIsFinancialsDialogOpen] = useState(false);
   const [expenseToDelete, setExpenseToDelete] = useState<Expense | null>(null);
 
   const [selectedMonth, setSelectedMonth] = useState<string>(new Date().getMonth().toString());
   const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString());
 
-  const expenseForm = useForm<z.infer<typeof expenseSchema>>({
+  const form = useForm<z.infer<typeof expenseSchema>>({
     resolver: zodResolver(expenseSchema),
     defaultValues: {
       description: '',
@@ -93,23 +86,16 @@ export default function Dashboard() {
     },
   });
 
-  const financialsForm = useForm<z.infer<typeof financialsSchema>>({
-    resolver: zodResolver(financialsSchema),
-  });
-
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const [paymentsData, expensesData, financialsData] = await Promise.all([
+        const [paymentsData, expensesData] = await Promise.all([
           getPayments(),
           getExpenses(),
-          getFinancials(),
         ]);
         setPayments(paymentsData);
         setExpenses(expensesData);
-        setFinancials(financialsData);
-        financialsForm.reset({ openingBalance: financialsData.openingBalance });
       } catch (error) {
         console.error('Failed to load dashboard data', error);
         toast({
@@ -122,23 +108,17 @@ export default function Dashboard() {
       }
     };
     fetchData();
-  }, [toast, financialsForm]);
+  }, [toast]);
   
   useEffect(() => {
     if (!isExpenseDialogOpen) {
-        expenseForm.reset({
-            description: '',
-            amount: '' as any,
-            date: format(new Date(), 'yyyy-MM-dd'),
-        });
+      form.reset({
+        description: '',
+        amount: '' as any,
+        date: format(new Date(), 'yyyy-MM-dd'),
+      });
     }
-  }, [isExpenseDialogOpen, expenseForm]);
-
-  useEffect(() => {
-      if (financials && !isFinancialsDialogOpen) {
-          financialsForm.reset({ openingBalance: financials.openingBalance });
-      }
-  }, [isFinancialsDialogOpen, financials, financialsForm]);
+  }, [isExpenseDialogOpen, form]);
 
   const filteredData = useMemo(() => {
     const isAllTime = selectedMonth === ALL_MONTHS && selectedYear === ALL_YEARS;
@@ -160,19 +140,15 @@ export default function Dashboard() {
 
   }, [payments, expenses, selectedMonth, selectedYear]);
 
-  const { totalCollected, totalExpenses, netBalance, openingBalance } = useMemo(() => {
-    const ob = financials?.openingBalance ?? 0;
-    const totalCollectedInFilter = filteredData.filteredPayments.reduce((sum, p) => sum + p.amount, 0);
-    const totalExpensesInFilter = filteredData.filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
-    const netBalance = ob + totalCollectedInFilter - totalExpensesInFilter;
-    
+  const { totalCollected, totalExpenses, netBalance } = useMemo(() => {
+    const collected = filteredData.filteredPayments.reduce((sum, p) => sum + p.amount, 0);
+    const spent = filteredData.filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
     return { 
-        openingBalance: ob,
-        totalCollected: totalCollectedInFilter, 
-        totalExpenses: totalExpensesInFilter,
-        netBalance, 
+        totalCollected: collected, 
+        totalExpenses: spent,
+        netBalance: collected - spent, 
     };
-  }, [filteredData, financials]);
+  }, [filteredData]);
   
   const sortedExpenses = useMemo(() => {
     return [...filteredData.filteredExpenses].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -185,7 +161,7 @@ export default function Dashboard() {
   }, [payments, expenses]);
 
 
-  const onExpenseSubmit = (values: z.infer<typeof expenseSchema>) => {
+  const onSubmit = (values: z.infer<typeof expenseSchema>) => {
     if (!isEditor) return;
     startTransition(async () => {
       try {
@@ -208,29 +184,6 @@ export default function Dashboard() {
       } finally {
         setIsExpenseDialogOpen(false);
       }
-    });
-  };
-
-  const onFinancialsSubmit = (values: z.infer<typeof financialsSchema>) => {
-    if (!isEditor) return;
-    startTransition(async () => {
-        try {
-            await updateFinancials(values);
-            setFinancials(prev => prev ? {...prev, ...values} : {id: 'singleton', ...values});
-            toast({
-                title: 'Opening Balance Updated',
-                description: 'The opening balance has been successfully updated.'
-            });
-        } catch (error) {
-            console.error('Failed to update financials', error);
-            toast({
-                variant: 'destructive',
-                title: 'Error',
-                description: 'Could not update opening balance. Please try again.'
-            });
-        } finally {
-            setIsFinancialsDialogOpen(false);
-        }
     });
   };
 
@@ -296,60 +249,7 @@ export default function Dashboard() {
             </Select>
         </div>
       </div>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                Opening Balance
-                </CardTitle>
-                <Banknote className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-                {isLoading ? <Skeleton className="h-8 w-3/4" /> : 
-                <div className="text-2xl font-bold">{formatCurrency(openingBalance)}</div>
-                }
-                {isEditor && (
-                <Dialog open={isFinancialsDialogOpen} onOpenChange={setIsFinancialsDialogOpen}>
-                    <DialogTrigger asChild>
-                        <Button variant="link" size="sm" className="p-0 h-auto text-xs">
-                            <Pencil className="mr-1 h-3 w-3" /> Edit
-                        </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                        <Form {...financialsForm}>
-                            <form onSubmit={financialsForm.handleSubmit(onFinancialsSubmit)}>
-                                <DialogHeader>
-                                    <DialogTitle>Edit Opening Balance</DialogTitle>
-                                    <DialogDescription>
-                                        Set the starting balance for your society's account.
-                                    </DialogDescription>
-                                </DialogHeader>
-                                <div className="py-4">
-                                    <FormField
-                                        control={financialsForm.control}
-                                        name="openingBalance"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Opening Balance (₹)</FormLabel>
-                                                <FormControl>
-                                                    <Input type="number" step="0.01" {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                </div>
-                                <DialogFooter>
-                                    <Button type="button" variant="ghost" onClick={() => setIsFinancialsDialogOpen(false)} disabled={isPending}>Cancel</Button>
-                                    <Button type="submit" disabled={isPending || !isEditor}>Save</Button>
-                                </DialogFooter>
-                            </form>
-                        </Form>
-                    </DialogContent>
-                </Dialog>
-                )}
-            </CardContent>
-        </Card>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
@@ -406,8 +306,8 @@ export default function Dashboard() {
                     </Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-[425px]">
-                    <Form {...expenseForm}>
-                        <form onSubmit={expenseForm.handleSubmit(onExpenseSubmit)} className="space-y-8">
+                    <Form {...form}>
+                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
                         <DialogHeader>
                             <DialogTitle>Record New Expense</DialogTitle>
                             <DialogDescription>
@@ -417,7 +317,7 @@ export default function Dashboard() {
                         
                         <div className="grid gap-4 py-4">
                             <FormField
-                                control={expenseForm.control}
+                                control={form.control}
                                 name="description"
                                 render={({ field }) => (
                                     <FormItem>
@@ -430,7 +330,7 @@ export default function Dashboard() {
                                 )}
                             />
                              <FormField
-                                control={expenseForm.control}
+                                control={form.control}
                                 name="amount"
                                 render={({ field }) => (
                                     <FormItem>
@@ -443,7 +343,7 @@ export default function Dashboard() {
                                 )}
                             />
                             <FormField
-                                control={expenseForm.control}
+                                control={form.control}
                                 name="date"
                                 render={({ field }) => (
                                     <FormItem>
