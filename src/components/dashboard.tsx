@@ -7,13 +7,12 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { format, getYear, getMonth } from 'date-fns';
-import { IndianRupee, Trash2, CalendarIcon, PlusCircle, ArrowUpCircle, ArrowDownCircle, AlertCircle, Banknote } from 'lucide-react';
+import { IndianRupee, Trash2, PlusCircle, ArrowUpCircle, ArrowDownCircle, AlertCircle } from 'lucide-react';
 
 import { getPayments } from '@/services/firestore';
 import { addExpense, getExpenses, deleteExpense } from '@/services/firestore';
 import type { Payment, Expense } from '@/types';
 import { useToast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -44,12 +43,6 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
 import {
   Table,
   TableBody,
@@ -161,15 +154,15 @@ export default function Dashboard() {
     
     const isAllTime = selectedMonth === ALL_MONTHS && selectedYear === ALL_YEARS;
     
-    let openingBalance = 0;
+    let currentOpeningBalance = 0;
     if (isAllTime) {
-      openingBalance = OPENING_BALANCE;
+      currentOpeningBalance = OPENING_BALANCE;
     }
 
-    const totalCollected = totalCollectedInFilter + openingBalance;
+    const totalCollected = totalCollectedInFilter + currentOpeningBalance;
     const netBalance = totalCollected - totalExpensesInFilter;
 
-    return { totalCollected, totalExpenses: totalExpensesInFilter, netBalance, openingBalance };
+    return { totalCollected, totalExpenses: totalExpensesInFilter, netBalance, openingBalance: currentOpeningBalance };
   }, [filteredData, selectedMonth, selectedYear]);
   
   const sortedExpenses = useMemo(() => {
@@ -455,6 +448,3 @@ export default function Dashboard() {
     </div>
   );
 }
-
-    
-    
