@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { MessageCircle, X, Send, Bot, User, Loader2 } from 'lucide-react';
-import { chat, ChatInput } from '@/ai/flows/chat-flow';
+import { chat } from '@/ai/flows/chat-flow';
+import type { ChatInput } from '@/ai/schemas/chat-schema';
 import { AnimatePresence, motion } from 'framer-motion';
 
 interface Message {
