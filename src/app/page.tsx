@@ -11,7 +11,6 @@ import { History, LayoutDashboard, LogOut, Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { ThemeToggle } from '@/components/theme-toggle';
 import SplashScreen from '@/components/splash-screen';
-import { Chatbot } from '@/components/chatbot';
 
 export default function Home() {
     const { user, signOut, loading } = useAuth();
@@ -51,7 +50,6 @@ export default function Home() {
       </div>
       <PaymentTracker />
     </main>
-    <Chatbot />
     </>
   );
 }
