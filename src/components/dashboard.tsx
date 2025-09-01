@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from 'react';
@@ -6,11 +7,13 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { format, getYear, getMonth } from 'date-fns';
-import { IndianRupee, Trash2, PlusCircle, ArrowUpCircle, ArrowDownCircle, AlertCircle } from 'lucide-react';
+import { IndianRupee, Trash2, CalendarIcon, PlusCircle, ArrowUpCircle, ArrowDownCircle, AlertCircle, Banknote } from 'lucide-react';
 
-import { getPayments, addExpense, getExpenses, deleteExpense } from '@/services/firestore';
-import type { Payment, Expense, Member } from '@/types';
+import { getPayments } from '@/services/firestore';
+import { addExpense, getExpenses, deleteExpense } from '@/services/firestore';
+import type { Payment, Expense } from '@/types';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -42,6 +45,12 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import {
   Table,
   TableBody,
   TableCell,
@@ -64,6 +73,8 @@ const expenseSchema = z.object({
 const ALL_MONTHS = "all-months";
 const ALL_YEARS = "all-years";
 
+const OPENING_BALANCE = 63348.64;
+
 export default function Dashboard() {
   const { toast } = useToast();
   const { isEditor } = useAuth();
@@ -77,7 +88,8 @@ export default function Dashboard() {
   const [selectedMonth, setSelectedMonth] = useState<string>(new Date().getMonth().toString());
   const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString());
 
-  const form = useForm<z.infer<typeof expenseSchema>>({
+
+  const expenseForm = useForm<z.infer<typeof expenseSchema>>({
     resolver: zodResolver(expenseSchema),
     defaultValues: {
       description: '',
@@ -112,43 +124,53 @@ export default function Dashboard() {
   
   useEffect(() => {
     if (!isExpenseDialogOpen) {
-      form.reset({
-        description: '',
-        amount: '' as any,
-        date: format(new Date(), 'yyyy-MM-dd'),
-      });
+        expenseForm.reset({
+            description: '',
+            amount: '' as any,
+            date: format(new Date(), 'yyyy-MM-dd'),
+        });
     }
-  }, [isExpenseDialogOpen, form]);
+  }, [isExpenseDialogOpen, expenseForm])
 
   const filteredData = useMemo(() => {
     const isAllTime = selectedMonth === ALL_MONTHS && selectedYear === ALL_YEARS;
     
-    const filterByDate = (items: (Payment | Expense)[]) => {
-        return items.filter(item => {
-            if (isAllTime) return true;
-            const itemDate = new Date(item.date);
-            const monthMatch = selectedMonth === ALL_MONTHS || getMonth(itemDate).toString() === selectedMonth;
-            const yearMatch = selectedYear === ALL_YEARS || getYear(itemDate).toString() === selectedYear;
-            return monthMatch && yearMatch;
-        });
-    }
+    const filteredPayments = payments.filter(p => {
+        if (isAllTime) return true;
+        const paymentDate = new Date(p.date);
+        const monthMatch = selectedMonth === ALL_MONTHS || getMonth(paymentDate).toString() === selectedMonth;
+        const yearMatch = selectedYear === ALL_YEARS || getYear(paymentDate).toString() === selectedYear;
+        return monthMatch && yearMatch;
+    });
 
-    return { 
-        filteredPayments: filterByDate(payments) as Payment[], 
-        filteredExpenses: filterByDate(expenses) as Expense[],
-    };
+    const filteredExpenses = expenses.filter(e => {
+        if (isAllTime) return true;
+        const expenseDate = new Date(e.date);
+        const monthMatch = selectedMonth === ALL_MONTHS || getMonth(expenseDate).toString() === selectedMonth;
+        const yearMatch = selectedYear === ALL_YEARS || getYear(expenseDate).toString() === selectedYear;
+        return monthMatch && yearMatch;
+    });
+
+    return { filteredPayments, filteredExpenses };
 
   }, [payments, expenses, selectedMonth, selectedYear]);
 
-  const { totalCollected, totalExpenses, netBalance } = useMemo(() => {
-    const collected = filteredData.filteredPayments.reduce((sum, p) => sum + p.amount, 0);
-    const spent = filteredData.filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
-    return { 
-        totalCollected: collected, 
-        totalExpenses: spent,
-        netBalance: collected - spent, 
-    };
-  }, [filteredData]);
+  const { totalCollected, totalExpenses, netBalance, openingBalance } = useMemo(() => {
+    const totalExpensesInFilter = filteredData.filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
+    const totalCollectedInFilter = filteredData.filteredPayments.reduce((sum, p) => sum + p.amount, 0);
+    
+    const isAllTime = selectedMonth === ALL_MONTHS && selectedYear === ALL_YEARS;
+    
+    let openingBalance = 0;
+    if (isAllTime) {
+      openingBalance = OPENING_BALANCE;
+    }
+
+    const totalCollected = totalCollectedInFilter + openingBalance;
+    const netBalance = totalCollected - totalExpensesInFilter;
+
+    return { totalCollected, totalExpenses: totalExpensesInFilter, netBalance, openingBalance };
+  }, [filteredData, selectedMonth, selectedYear]);
   
   const sortedExpenses = useMemo(() => {
     return [...filteredData.filteredExpenses].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -161,14 +183,15 @@ export default function Dashboard() {
   }, [payments, expenses]);
 
 
-  const onSubmit = (values: z.infer<typeof expenseSchema>) => {
+  const onExpenseSubmit = (values: z.infer<typeof expenseSchema>) => {
     if (!isEditor) return;
     startTransition(async () => {
       try {
-        const newExpense = await addExpense({
+        const expenseData = {
           ...values,
           date: new Date(values.date).toISOString(),
-        });
+        };
+        const newExpense = await addExpense(expenseData);
         setExpenses((prev) => [...prev, newExpense]);
         toast({
           title: 'Expense Recorded',
@@ -258,12 +281,12 @@ export default function Dashboard() {
             <ArrowUpCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            {isLoading ? <Skeleton className="h-8 w-3/4" /> : 
-            <div className="text-2xl font-bold">{formatCurrency(totalCollected)}</div>
-            }
-            <p className="text-xs text-muted-foreground">
-                From maintenance payments.
-            </p>
+            {isLoading ? <Skeleton className="h-8 w-3/4" /> : <div className="text-2xl font-bold">{formatCurrency(totalCollected)}</div>}
+            {openingBalance > 0 && (
+                 <p className="text-xs text-muted-foreground">
+                    (Including Opening Balance)
+                </p>
+            )}
           </CardContent>
         </Card>
         <Card>
@@ -287,8 +310,7 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
-
-      <div className="grid gap-6">
+      
       <Card>
         <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
@@ -306,8 +328,8 @@ export default function Dashboard() {
                     </Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-[425px]">
-                    <Form {...form}>
-                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+                    <Form {...expenseForm}>
+                        <form onSubmit={expenseForm.handleSubmit(onExpenseSubmit)} className="space-y-8">
                         <DialogHeader>
                             <DialogTitle>Record New Expense</DialogTitle>
                             <DialogDescription>
@@ -317,7 +339,7 @@ export default function Dashboard() {
                         
                         <div className="grid gap-4 py-4">
                             <FormField
-                                control={form.control}
+                                control={expenseForm.control}
                                 name="description"
                                 render={({ field }) => (
                                     <FormItem>
@@ -330,7 +352,7 @@ export default function Dashboard() {
                                 )}
                             />
                              <FormField
-                                control={form.control}
+                                control={expenseForm.control}
                                 name="amount"
                                 render={({ field }) => (
                                     <FormItem>
@@ -343,7 +365,7 @@ export default function Dashboard() {
                                 )}
                             />
                             <FormField
-                                control={form.control}
+                                control={expenseForm.control}
                                 name="date"
                                 render={({ field }) => (
                                     <FormItem>
@@ -390,7 +412,7 @@ export default function Dashboard() {
                 ) : sortedExpenses.length > 0 ? (
                   sortedExpenses.map((expense) => (
                     <TableRow key={expense.id}>
-                      <TableCell className="font-medium">{expense.description}</TableCell>
+                      <TableCell className="font-medium min-w-[150px]">{expense.description}</TableCell>
                       <TableCell>{formatCurrency(expense.amount)}</TableCell>
                       <TableCell>{format(new Date(expense.date), 'PPP')}</TableCell>
                       <TableCell className="text-right print-hide">
@@ -430,7 +452,9 @@ export default function Dashboard() {
           </div>
         </CardContent>
       </Card>
-      </div>
     </div>
   );
 }
+
+    
+    
