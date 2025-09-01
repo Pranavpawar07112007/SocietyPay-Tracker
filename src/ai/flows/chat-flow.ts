@@ -18,6 +18,7 @@ import {
 } from '@/ai/schemas/chat-schema';
 import { getExpenses, getMembers, getPayments, addMember, updateMember, deleteMember, addPayment, updatePayment, deletePayment, addExpense, deleteExpense } from '@/services/firestore';
 import { z } from 'zod';
+import { getMonth, getYear } from 'date-fns';
 
 export async function chat(input: ChatInput): Promise<ChatOutput> {
   return chatFlow(input);
@@ -75,11 +76,31 @@ const listPaymentsTool = ai.defineTool(
     {
         name: 'listPayments',
         description: 'Get a list of all maintenance payments made by members.',
-        inputSchema: z.object({}),
+        inputSchema: z.object({
+            month: z.number().optional().describe("The month to filter by (1-12)."),
+            year: z.number().optional().describe("The year to filter by (e.g., 2024).")
+        }),
         outputSchema: z.array(PaymentSchema),
     },
-    async () => {
-        return await getPayments();
+    async ({ month, year }) => {
+        const allPayments = await getPayments();
+        if (!month && !year) {
+            return allPayments;
+        }
+
+        const currentYear = new Date().getFullYear();
+        const filterYear = year || currentYear;
+
+        return allPayments.filter(payment => {
+            const paymentDate = new Date(payment.date);
+            const paymentYear = getYear(paymentDate);
+            const paymentMonth = getMonth(paymentDate) + 1; // date-fns is 0-indexed
+
+            const yearMatch = paymentYear === filterYear;
+            const monthMatch = month ? paymentMonth === month : true;
+
+            return yearMatch && monthMatch;
+        });
     }
 );
 
@@ -123,11 +144,31 @@ const listExpensesTool = ai.defineTool(
     {
         name: 'listExpenses',
         description: 'Get a list of all society expenses.',
-        inputSchema: z.object({}),
+        inputSchema: z.object({
+            month: z.number().optional().describe("The month to filter by (1-12)."),
+            year: z.number().optional().describe("The year to filter by (e.g., 2024).")
+        }),
         outputSchema: z.array(ExpenseSchema),
     },
-    async () => {
-        return await getExpenses();
+    async ({ month, year }) => {
+        const allExpenses = await getExpenses();
+        if (!month && !year) {
+            return allExpenses;
+        }
+
+        const currentYear = new Date().getFullYear();
+        const filterYear = year || currentYear;
+
+        return allExpenses.filter(expense => {
+            const expenseDate = new Date(expense.date);
+            const expenseYear = getYear(expenseDate);
+            const expenseMonth = getMonth(expenseDate) + 1; // date-fns is 0-indexed
+
+            const yearMatch = expenseYear === filterYear;
+            const monthMatch = month ? expenseMonth === month : true;
+
+            return yearMatch && monthMatch;
+        });
     }
 );
 
