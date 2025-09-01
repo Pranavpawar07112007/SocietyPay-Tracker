@@ -16,7 +16,7 @@ import {
   MemberSchema,
   PaymentSchema,
 } from '@/ai/schemas/chat-schema';
-import { getExpenses, getMembers, getPayments } from '@/services/firestore';
+import { getExpenses, getMembers, getPayments, addMember, updateMember, deleteMember, addPayment, updatePayment, deletePayment, addExpense, deleteExpense } from '@/services/firestore';
 import { z } from 'zod';
 
 export async function chat(input: ChatInput): Promise<ChatOutput> {
@@ -35,6 +35,42 @@ const listMembersTool = ai.defineTool(
     }
 );
 
+const addMemberTool = ai.defineTool(
+    {
+        name: 'addMember',
+        description: 'Add a new society member.',
+        inputSchema: MemberSchema.omit({ id: true }),
+        outputSchema: MemberSchema,
+    },
+    async (member) => {
+        return await addMember(member);
+    }
+);
+
+const updateMemberTool = ai.defineTool(
+    {
+        name: 'updateMember',
+        description: 'Update an existing society member.',
+        inputSchema: z.object({ id: z.string(), data: MemberSchema.partial() }),
+        outputSchema: z.void(),
+    },
+    async ({id, data}) => {
+        return await updateMember(id, data);
+    }
+);
+
+const deleteMemberTool = ai.defineTool(
+    {
+        name: 'deleteMember',
+        description: 'Delete a society member.',
+        inputSchema: z.object({ id: z.string() }),
+        outputSchema: z.void(),
+    },
+    async ({id}) => {
+        return await deleteMember(id);
+    }
+);
+
 const listPaymentsTool = ai.defineTool(
     {
         name: 'listPayments',
@@ -47,6 +83,42 @@ const listPaymentsTool = ai.defineTool(
     }
 );
 
+const addPaymentTool = ai.defineTool(
+    {
+        name: 'addPayment',
+        description: 'Add a new payment record.',
+        inputSchema: PaymentSchema.omit({ id: true }),
+        outputSchema: PaymentSchema,
+    },
+    async (payment) => {
+        return await addPayment(payment);
+    }
+);
+
+const updatePaymentTool = ai.defineTool(
+    {
+        name: 'updatePayment',
+        description: 'Update an existing payment record.',
+        inputSchema: z.object({ id: z.string(), data: PaymentSchema.partial() }),
+        outputSchema: z.void(),
+    },
+    async ({id, data}) => {
+        return await updatePayment(id, data);
+    }
+);
+
+const deletePaymentTool = ai.defineTool(
+    {
+        name: 'deletePayment',
+        description: 'Delete a payment record.',
+        inputSchema: z.object({ id: z.string() }),
+        outputSchema: z.void(),
+    },
+    async ({id}) => {
+        return await deletePayment(id);
+    }
+);
+
 const listExpensesTool = ai.defineTool(
     {
         name: 'listExpenses',
@@ -56,6 +128,30 @@ const listExpensesTool = ai.defineTool(
     },
     async () => {
         return await getExpenses();
+    }
+);
+
+const addExpenseTool = ai.defineTool(
+    {
+        name: 'addExpense',
+        description: 'Add a new expense record.',
+        inputSchema: ExpenseSchema.omit({ id: true }),
+        outputSchema: ExpenseSchema,
+    },
+    async (expense) => {
+        return await addExpense(expense);
+    }
+);
+
+const deleteExpenseTool = ai.defineTool(
+    {
+        name: 'deleteExpense',
+        description: 'Delete an expense record.',
+        inputSchema: z.object({ id: z.string() }),
+        outputSchema: z.void(),
+    },
+    async ({id}) => {
+        return await deleteExpense(id);
     }
 );
 
@@ -76,7 +172,19 @@ const chatFlow = ai.defineFlow(
       model: 'googleai/gemini-2.0-flash',
       prompt: input.message,
       history: history,
-      tools: [listMembersTool, listPaymentsTool, listExpensesTool],
+      tools: [
+        listMembersTool,
+        addMemberTool,
+        updateMemberTool,
+        deleteMemberTool,
+        listPaymentsTool,
+        addPaymentTool,
+        updatePaymentTool,
+        deletePaymentTool,
+        listExpensesTool,
+        addExpenseTool,
+        deleteExpenseTool,
+      ],
       config: {
         // Just use a temperature of 0 for basic chat.
         temperature: 0,
