@@ -7,7 +7,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { format, getYear, getMonth } from 'date-fns';
-import { IndianRupee, Trash2, PlusCircle, ArrowUpCircle, ArrowDownCircle, AlertCircle, Users, HandCoins } from 'lucide-react';
+import { IndianRupee, Trash2, PlusCircle, ArrowUpCircle, ArrowDownCircle, AlertCircle, HandCoins } from 'lucide-react';
 
 import { getPayments, getMembers as getAllMembers, getOtherIncomes, addOtherIncome, deleteOtherIncome } from '@/services/firestore';
 import { addExpense, getExpenses, deleteExpense } from '@/services/firestore';
@@ -24,14 +24,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-} from '@/components/ui/dropdown-menu';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -82,7 +74,6 @@ export default function Dashboard() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [otherIncomes, setOtherIncomes] = useState<OtherIncome[]>([]);
-  const [members, setMembers] = useState<Member[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isPending, startTransition] = useTransition();
   const [isExpenseDialogOpen, setIsExpenseDialogOpen] = useState(false);
@@ -106,15 +97,13 @@ export default function Dashboard() {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const [paymentsData, expensesData, membersData, incomesData] = await Promise.all([
+        const [paymentsData, expensesData, incomesData] = await Promise.all([
           getPayments(),
           getExpenses(),
-          getAllMembers(),
           getOtherIncomes(),
         ]);
         setPayments(paymentsData);
         setExpenses(expensesData);
-        setMembers(membersData);
         setOtherIncomes(incomesData);
       } catch (error) {
         console.error('Failed to load dashboard data', error);
@@ -161,7 +150,7 @@ export default function Dashboard() {
 
   }, [payments, expenses, otherIncomes, selectedMonth, selectedYear]);
 
-  const { totalCollected, totalExpenses, totalOtherIncome, netBalance, openingBalance, paidMembers } = useMemo(() => {
+  const { totalCollected, totalExpenses, totalOtherIncome, netBalance, openingBalance } = useMemo(() => {
     const totalExpensesInFilter = filteredData.filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
     const totalCollectedInFilter = filteredData.filteredPayments.reduce((sum, p) => sum + p.amount, 0);
     const totalOtherIncomeInFilter = filteredData.filteredIncomes.reduce((sum, i) => sum + i.amount, 0);
@@ -176,21 +165,15 @@ export default function Dashboard() {
     const totalCollected = totalCollectedInFilter + totalOtherIncomeInFilter + currentOpeningBalance;
     const netBalance = totalCollected - totalExpensesInFilter;
     
-    const paidMemberIds = new Set(filteredData.filteredPayments.map(p => p.memberId));
-    const paidMembers = Array.from(paidMemberIds)
-        .map(memberId => members.find(m => m.id === memberId))
-        .filter((m): m is Member => !!m)
-        .sort((a,b) => a.name.localeCompare(b.name));
 
     return { 
         totalCollected, 
         totalExpenses: totalExpensesInFilter,
         totalOtherIncome: totalOtherIncomeInFilter,
         netBalance, 
-        openingBalance: currentOpeningBalance, 
-        paidMembers 
+        openingBalance: currentOpeningBalance
     };
-  }, [filteredData, selectedMonth, selectedYear, members]);
+  }, [filteredData, selectedMonth, selectedYear]);
   
   const sortedExpenses = useMemo(() => {
     return [...filteredData.filteredExpenses].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -355,27 +338,7 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             {isLoading ? <Skeleton className="h-8 w-3/4" /> : 
-            <div className="flex items-center justify-between">
-                <div className="text-2xl font-bold">{formatCurrency(totalCollected)}</div>
-                 <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" disabled={paidMembers.length === 0}>
-                            <Users className="h-5 w-5" />
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                         <DropdownMenuLabel>Paid Members ({paidMembers.length})</DropdownMenuLabel>
-                         <DropdownMenuSeparator />
-                         <div className="max-h-60 overflow-y-auto">
-                            {paidMembers.map(member => (
-                                <DropdownMenuItem key={member.id}>
-                                    {member.name} ({member.flatNumber})
-                                </DropdownMenuItem>
-                            ))}
-                         </div>
-                    </DropdownMenuContent>
-                </DropdownMenu>
-            </div>
+            <div className="text-2xl font-bold">{formatCurrency(totalCollected)}</div>
             }
             {(openingBalance > 0 || totalOtherIncome > 0) && (
                  <p className="text-xs text-muted-foreground">
@@ -519,7 +482,7 @@ export default function Dashboard() {
                 ) : sortedIncomes.length > 0 ? (
                   sortedIncomes.map((income) => (
                     <TableRow key={income.id}>
-                      <TableCell className="font-medium min-w-[150px]">{income.description}</TableCell>
+                      <TableCell className="font-medium">{income.description}</TableCell>
                       <TableCell>{formatCurrency(income.amount)}</TableCell>
                       <TableCell>{format(new Date(income.date), 'PPP')}</TableCell>
                       <TableCell className="text-right print-hide">
@@ -661,7 +624,7 @@ export default function Dashboard() {
                 ) : sortedExpenses.length > 0 ? (
                   sortedExpenses.map((expense) => (
                     <TableRow key={expense.id}>
-                      <TableCell className="font-medium min-w-[150px]">{expense.description}</TableCell>
+                      <TableCell className="font-medium">{expense.description}</TableCell>
                       <TableCell>{formatCurrency(expense.amount)}</TableCell>
                       <TableCell>{format(new Date(expense.date), 'PPP')}</TableCell>
                       <TableCell className="text-right print-hide">
